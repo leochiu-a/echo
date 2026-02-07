@@ -4,11 +4,11 @@ import SwiftUI
 struct InlinePromptView: View {
     @ObservedObject var viewModel: InlinePromptViewModel
     @State private var inputHeight: CGFloat = 26
-    @State private var outputHeight: CGFloat = 300
+    @State private var outputHeight: CGFloat = 140
     @State private var outputMeasuredWidth: CGFloat = 0
 
-    private let outputMinHeight: CGFloat = 300
-    private let outputMaxHeight: CGFloat = 520
+    private let outputMinHeight: CGFloat = 140
+    private let outputMaxHeight: CGFloat = 420
     private let outputFontSize: CGFloat = 13
     private let outputLineSpacing: CGFloat = 2
 
@@ -119,6 +119,8 @@ struct InlinePromptView: View {
                     Text(viewModel.outputText)
                         .font(.system(size: outputFontSize, weight: .regular, design: .monospaced))
                         .lineSpacing(outputLineSpacing)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
                         .foregroundStyle(Color(nsColor: .labelColor))
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -178,7 +180,7 @@ struct InlinePromptView: View {
             return
         }
 
-        let availableWidth = max(outputMeasuredWidth - 6, 1)
+        let availableWidth = max(outputMeasuredWidth - 12, 1)
         let measuredTextHeight = measuredHeight(for: viewModel.outputText, availableWidth: availableWidth)
         let targetHeight = min(max(measuredTextHeight + 16, outputMinHeight), outputMaxHeight)
 
@@ -190,7 +192,7 @@ struct InlinePromptView: View {
     private func measuredHeight(for text: String, availableWidth: CGFloat) -> CGFloat {
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineSpacing = outputLineSpacing
-        paragraph.lineBreakMode = .byWordWrapping
+        paragraph.lineBreakMode = .byCharWrapping
 
         let attributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.monospacedSystemFont(ofSize: outputFontSize, weight: .regular),

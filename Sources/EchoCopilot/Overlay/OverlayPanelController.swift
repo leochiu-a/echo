@@ -53,7 +53,7 @@ final class OverlayPanelController {
 
     private func makePanel() -> FloatingPanel {
         let panel = FloatingPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 540, height: 680),
+            contentRect: NSRect(x: 0, y: 0, width: 540, height: 560),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false

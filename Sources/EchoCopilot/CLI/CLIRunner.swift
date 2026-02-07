@@ -177,6 +177,8 @@ private func composePrompt(command: String, selectedText: String?, action: Copil
         >>>
 
         Apply the instruction to the selected text above.
+        Preserve paragraph and line-break structure when it is present.
+        If line breaks are ambiguous, format into readable sentence/paragraph breaks.
         Return only the final result text.
         """
 
@@ -194,6 +196,7 @@ private func composePrompt(command: String, selectedText: String?, action: Copil
         >>>
 
         Use the context above to answer the question.
+        Keep the response readable with clear paragraph/line breaks.
         If context is insufficient, say so briefly.
         """
     }

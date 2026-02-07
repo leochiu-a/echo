@@ -82,6 +82,31 @@ final class AXContextManager {
     private func normalizedSelectedText(_ text: String) -> String? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
-        return String(trimmed.prefix(maxSelectedTextLength))
+        let withRecoveredLineBreaks = recoverLineBreaksIfNeeded(in: trimmed)
+        return String(withRecoveredLineBreaks.prefix(maxSelectedTextLength))
+    }
+
+    private func recoverLineBreaksIfNeeded(in text: String) -> String {
+        guard !text.contains(where: \.isNewline), text.count >= 100 else {
+            return text
+        }
+
+        let withCJKSentenceBreaks = text.replacingOccurrences(
+            of: #"([。！？；])"#,
+            with: "$1\n",
+            options: .regularExpression
+        )
+        let withLatinSentenceBreaks = withCJKSentenceBreaks.replacingOccurrences(
+            of: #"([.!?;])\s+"#,
+            with: "$1\n",
+            options: .regularExpression
+        )
+        let normalized = withLatinSentenceBreaks.replacingOccurrences(
+            of: #"\s*\n\s*"#,
+            with: "\n",
+            options: .regularExpression
+        )
+
+        return normalized
     }
 }
