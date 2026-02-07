@@ -13,8 +13,8 @@ final class OverlayPanelController {
         viewModel.onRequestClose = { [weak self] in
             self?.dismiss()
         }
-        viewModel.onRequestAccept = { [weak self] acceptedText in
-            self?.copyToClipboard(acceptedText)
+        viewModel.onRequestAccept = { [weak self] acceptedText, mode in
+            self?.applyOutput(acceptedText, mode: mode)
         }
     }
 
@@ -29,7 +29,10 @@ final class OverlayPanelController {
     private func showNearMouse() {
         previousApp = NSWorkspace.shared.frontmostApplication
         let context = axContextManager.captureSnapshot()
-        viewModel.prepareForPresentation(selectedText: context.selectedText)
+        viewModel.prepareForPresentation(
+            selectedText: context.selectedText,
+            hasEditableSelection: context.hasEditableSelection
+        )
 
         let panelSize = panel.frame.size
         let mouse = NSEvent.mouseLocation
@@ -50,7 +53,7 @@ final class OverlayPanelController {
 
     private func makePanel() -> FloatingPanel {
         let panel = FloatingPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 540, height: 126),
+            contentRect: NSRect(x: 0, y: 0, width: 540, height: 680),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -118,8 +121,8 @@ final class OverlayPanelController {
                 viewModel.historyDown()
                 return nil
             case 36: // Return
-                if event.modifierFlags.contains(.command) {
-                    viewModel.accept()
+                if event.modifierFlags.contains(.command), viewModel.canShowApplyButtons {
+                    viewModel.replaceOutput()
                     return nil
                 }
                 if event.modifierFlags.intersection([.command, .option, .control]).isEmpty
@@ -154,6 +157,38 @@ final class OverlayPanelController {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
+    }
+
+    private func applyOutput(_ text: String, mode: OutputApplyMode) {
+        guard !text.isEmpty else { return }
+        copyToClipboard(text)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
+            guard let self else { return }
+            previousApp?.activate(options: [.activateIgnoringOtherApps])
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
+                guard let self else { return }
+                if mode == .insert, viewModel.hasSelectionContext {
+                    postKeystroke(124) // Right Arrow
+                }
+                postKeystroke(9, flags: [.maskCommand]) // Cmd+V
+            }
+        }
+    }
+
+    private func postKeystroke(_ keyCode: CGKeyCode, flags: CGEventFlags = []) {
+        guard
+            let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true),
+            let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false)
+        else {
+            return
+        }
+
+        keyDown.flags = flags
+        keyUp.flags = flags
+        keyDown.post(tap: .cghidEventTap)
+        keyUp.post(tap: .cghidEventTap)
     }
 }
 

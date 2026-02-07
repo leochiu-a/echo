@@ -1,8 +1,16 @@
+import AppKit
 import SwiftUI
 
 struct InlinePromptView: View {
     @ObservedObject var viewModel: InlinePromptViewModel
     @State private var inputHeight: CGFloat = 26
+    @State private var outputHeight: CGFloat = 300
+    @State private var outputMeasuredWidth: CGFloat = 0
+
+    private let outputMinHeight: CGFloat = 300
+    private let outputMaxHeight: CGFloat = 520
+    private let outputFontSize: CGFloat = 13
+    private let outputLineSpacing: CGFloat = 2
 
     private var isEditSelectionMode: Bool {
         viewModel.selectedAction == .edit && viewModel.hasSelectionContext
@@ -18,15 +26,16 @@ struct InlinePromptView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 ZStack(alignment: .topLeading) {
-            AutoGrowingCommandInput(
-                text: $viewModel.commandText,
-                dynamicHeight: $inputHeight,
-                isComposing: $viewModel.isComposingInput,
-                minHeight: 26,
-                maxHeight: 92,
-                focusRequestID: viewModel.focusRequestID
-            )
-            .frame(height: inputHeight)
+                    AutoGrowingCommandInput(
+                        text: $viewModel.commandText,
+                        dynamicHeight: $inputHeight,
+                        isComposing: $viewModel.isComposingInput,
+                        minHeight: 26,
+                        maxHeight: 92,
+                        isEditable: !viewModel.isRunning,
+                        focusRequestID: viewModel.focusRequestID
+                    )
+                    .frame(height: inputHeight)
 
                     if viewModel.commandText.isEmpty && !viewModel.isComposingInput {
                         Text(viewModel.actionLabel)
@@ -78,7 +87,7 @@ struct InlinePromptView: View {
                     } label: {
                         Image(systemName: "stop.circle.fill")
                             .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(Color(nsColor: .systemRed))
+                            .foregroundStyle(Color(nsColor: .labelColor))
                     }
                     .buttonStyle(.plain)
                 } else {
@@ -105,26 +114,94 @@ struct InlinePromptView: View {
                     .foregroundStyle(.red)
             }
 
-            if viewModel.hasExecuted {
+            if !viewModel.outputText.isEmpty {
                 ScrollView {
-                    Text(viewModel.outputText.isEmpty ? "No output yet." : viewModel.outputText)
-                        .font(.system(.footnote, design: .monospaced))
-                        .foregroundStyle(
-                            viewModel.outputText.isEmpty
-                                ? Color(nsColor: .secondaryLabelColor)
-                                : Color(nsColor: .labelColor)
-                        )
+                    Text(viewModel.outputText)
+                        .font(.system(size: outputFontSize, weight: .regular, design: .monospaced))
+                        .lineSpacing(outputLineSpacing)
+                        .foregroundStyle(Color(nsColor: .labelColor))
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(minHeight: 44, maxHeight: 84)
-                .padding(5)
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear
+                            .onAppear {
+                                outputMeasuredWidth = proxy.size.width
+                                updateOutputHeight()
+                            }
+                            .onChange(of: proxy.size.width) { newValue in
+                                outputMeasuredWidth = newValue
+                                updateOutputHeight()
+                            }
+                    }
+                )
+                .frame(height: outputHeight)
+                .padding(8)
                 .background(
                     RoundedRectangle(cornerRadius: 7)
                         .fill(Color(nsColor: .controlBackgroundColor))
                 )
+
+                if viewModel.canShowApplyButtons {
+                    HStack(spacing: 8) {
+                        Spacer()
+
+                        Button {
+                            viewModel.replaceOutput()
+                        } label: {
+                            Label("Replace", systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button {
+                            viewModel.insertOutput()
+                        } label: {
+                            Label("Insert", systemImage: "plus.circle.fill")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
             }
         }
         .padding(8)
         .frame(width: 540)
+        .onChange(of: viewModel.outputText) { _ in
+            updateOutputHeight()
+        }
+    }
+
+    private func updateOutputHeight() {
+        guard !viewModel.outputText.isEmpty else {
+            outputHeight = outputMinHeight
+            return
+        }
+
+        let availableWidth = max(outputMeasuredWidth - 6, 1)
+        let measuredTextHeight = measuredHeight(for: viewModel.outputText, availableWidth: availableWidth)
+        let targetHeight = min(max(measuredTextHeight + 16, outputMinHeight), outputMaxHeight)
+
+        if abs(outputHeight - targetHeight) > 0.5 {
+            outputHeight = targetHeight
+        }
+    }
+
+    private func measuredHeight(for text: String, availableWidth: CGFloat) -> CGFloat {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineSpacing = outputLineSpacing
+        paragraph.lineBreakMode = .byWordWrapping
+
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedSystemFont(ofSize: outputFontSize, weight: .regular),
+            .paragraphStyle: paragraph
+        ]
+
+        let rect = (text as NSString).boundingRect(
+            with: NSSize(width: availableWidth, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: attributes
+        )
+        return ceil(rect.height)
     }
 }

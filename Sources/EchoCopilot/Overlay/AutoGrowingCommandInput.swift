@@ -8,6 +8,7 @@ struct AutoGrowingCommandInput: NSViewRepresentable {
 
     let minHeight: CGFloat
     let maxHeight: CGFloat
+    let isEditable: Bool
     let focusRequestID: UUID
 
     func makeCoordinator() -> Coordinator {
@@ -25,7 +26,7 @@ struct AutoGrowingCommandInput: NSViewRepresentable {
         scrollView.horizontalScrollElasticity = .none
 
         let textView = IMEAwareTextView()
-        textView.isEditable = true
+        textView.isEditable = isEditable
         textView.isSelectable = true
         textView.isRichText = false
         textView.importsGraphics = false
@@ -53,7 +54,9 @@ struct AutoGrowingCommandInput: NSViewRepresentable {
 
         DispatchQueue.main.async {
             self.updateMeasuredHeight(for: textView)
-            textView.window?.makeFirstResponder(textView)
+            if isEditable {
+                textView.window?.makeFirstResponder(textView)
+            }
         }
 
         return scrollView
@@ -65,6 +68,7 @@ struct AutoGrowingCommandInput: NSViewRepresentable {
 
         scrollView.hasVerticalScroller = false
         scrollView.hasHorizontalScroller = false
+        textView.isEditable = isEditable
 
         if textView.string != text, !textView.hasMarkedText() {
             textView.string = text
@@ -74,7 +78,9 @@ struct AutoGrowingCommandInput: NSViewRepresentable {
         if context.coordinator.lastFocusRequestID != focusRequestID {
             context.coordinator.lastFocusRequestID = focusRequestID
             DispatchQueue.main.async {
-                textView.window?.makeFirstResponder(textView)
+                if isEditable {
+                    textView.window?.makeFirstResponder(textView)
+                }
             }
         }
 

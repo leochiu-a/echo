@@ -3,34 +3,31 @@ import Foundation
 
 struct AXContextSnapshot {
     let selectedText: String?
+    let hasEditableSelection: Bool
 }
 
 final class AXContextManager {
     private let maxSelectedTextLength = 12_000
 
     func captureSnapshot() -> AXContextSnapshot {
-        AXContextSnapshot(selectedText: captureSelectedText())
+        guard AXIsProcessTrusted() else {
+            return AXContextSnapshot(selectedText: nil, hasEditableSelection: false)
+        }
+
+        guard let focusedElement = focusedElement() else {
+            return AXContextSnapshot(selectedText: nil, hasEditableSelection: false)
+        }
+
+        let selectedText = captureSelectedText(from: focusedElement)
+        let hasEditableSelection = selectedText != nil && isElementEditable(focusedElement)
+        return AXContextSnapshot(selectedText: selectedText, hasEditableSelection: hasEditableSelection)
     }
 
-    private func captureSelectedText() -> String? {
-        guard AXIsProcessTrusted() else { return nil }
-
-        let systemWideElement = AXUIElementCreateSystemWide()
-        guard
-            let focusedValue = copyAttribute(
-                kAXFocusedUIElementAttribute as CFString,
-                from: systemWideElement
-            ),
-            CFGetTypeID(focusedValue) == AXUIElementGetTypeID()
-        else {
-            return nil
-        }
-        let focusedElementRef = unsafeBitCast(focusedValue, to: AXUIElement.self)
-
+    private func captureSelectedText(from focusedElement: AXUIElement) -> String? {
         guard
             let selectedValue = copyAttribute(
                 kAXSelectedTextAttribute as CFString,
-                from: focusedElementRef
+                from: focusedElement
             )
         else {
             return nil
@@ -45,6 +42,34 @@ final class AXContextManager {
         }
 
         return nil
+    }
+
+    private func focusedElement() -> AXUIElement? {
+        let systemWideElement = AXUIElementCreateSystemWide()
+        guard
+            let focusedValue = copyAttribute(
+                kAXFocusedUIElementAttribute as CFString,
+                from: systemWideElement
+            ),
+            CFGetTypeID(focusedValue) == AXUIElementGetTypeID()
+        else {
+            return nil
+        }
+        return unsafeBitCast(focusedValue, to: AXUIElement.self)
+    }
+
+    private func isElementEditable(_ element: AXUIElement) -> Bool {
+        if let editableValue = copyAttribute("AXEditable" as CFString, from: element) as? Bool {
+            return editableValue
+        }
+
+        var isSettable = DarwinBoolean(false)
+        let result = AXUIElementIsAttributeSettable(
+            element,
+            kAXSelectedTextRangeAttribute as CFString,
+            &isSettable
+        )
+        return result == .success && isSettable.boolValue
     }
 
     private func copyAttribute(_ attribute: CFString, from element: AXUIElement) -> CFTypeRef? {

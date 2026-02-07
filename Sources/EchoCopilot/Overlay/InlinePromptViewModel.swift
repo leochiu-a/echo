@@ -1,6 +1,11 @@
 import Combine
 import Foundation
 
+enum OutputApplyMode {
+    case replace
+    case insert
+}
+
 @MainActor
 final class InlinePromptViewModel: ObservableObject {
     @Published var commandText = ""
@@ -9,13 +14,13 @@ final class InlinePromptViewModel: ObservableObject {
     @Published var errorText: String?
     @Published var selectedContextInfo: String?
     @Published var hasSelectionContext = false
+    @Published var hasEditableSelection = false
     @Published var selectedAction: CopilotAction = .edit
-    @Published var hasExecuted = false
     @Published var focusRequestID = UUID()
     @Published var isComposingInput = false
 
     var onRequestClose: (() -> Void)?
-    var onRequestAccept: ((String) -> Void)?
+    var onRequestAccept: ((String, OutputApplyMode) -> Void)?
 
     private let cliRunner = CLIRunner()
     private var history: [String] = []
@@ -27,20 +32,24 @@ final class InlinePromptViewModel: ObservableObject {
         selectedAction.title(hasSelection: hasSelectionContext)
     }
 
+    var canShowApplyButtons: Bool {
+        hasEditableSelection && !outputText.isEmpty
+    }
+
     deinit {
         runningTask?.cancel()
     }
 
-    func prepareForPresentation(selectedText: String?) {
+    func prepareForPresentation(selectedText: String?, hasEditableSelection: Bool) {
         outputText = ""
         errorText = nil
-        hasExecuted = false
         focusRequestID = UUID()
         isComposingInput = false
         selectedAction = .edit
         historyIndex = nil
         selectedContextText = selectedText
         hasSelectionContext = selectedText != nil
+        self.hasEditableSelection = hasEditableSelection
         if let selectedText {
             selectedContextInfo = "Using selected text context (\(selectedText.count) chars)"
         } else {
@@ -54,7 +63,6 @@ final class InlinePromptViewModel: ObservableObject {
         guard !isRunning else { return }
 
         isRunning = true
-        hasExecuted = true
         errorText = nil
         outputText = ""
         historyIndex = nil
@@ -107,9 +115,17 @@ final class InlinePromptViewModel: ObservableObject {
         onRequestClose?()
     }
 
-    func accept() {
+    func replaceOutput() {
+        guard canShowApplyButtons else { return }
         let value = outputText.isEmpty ? commandText : outputText
-        onRequestAccept?(value)
+        onRequestAccept?(value, .replace)
+        onRequestClose?()
+    }
+
+    func insertOutput() {
+        guard canShowApplyButtons else { return }
+        let value = outputText.isEmpty ? commandText : outputText
+        onRequestAccept?(value, .insert)
         onRequestClose?()
     }
 
