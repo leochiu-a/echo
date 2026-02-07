@@ -8,6 +8,8 @@ final class InlinePromptViewModel: ObservableObject {
     @Published var isRunning = false
     @Published var errorText: String?
     @Published var selectedContextInfo: String?
+    @Published var hasExecuted = false
+    @Published var focusRequestID = UUID()
 
     var onRequestClose: (() -> Void)?
     var onRequestAccept: ((String) -> Void)?
@@ -23,7 +25,10 @@ final class InlinePromptViewModel: ObservableObject {
     }
 
     func prepareForPresentation(selectedText: String?) {
+        outputText = ""
         errorText = nil
+        hasExecuted = false
+        focusRequestID = UUID()
         historyIndex = nil
         selectedContextText = selectedText
         if let selectedText {
@@ -39,6 +44,7 @@ final class InlinePromptViewModel: ObservableObject {
         guard !isRunning else { return }
 
         isRunning = true
+        hasExecuted = true
         errorText = nil
         outputText = ""
         historyIndex = nil

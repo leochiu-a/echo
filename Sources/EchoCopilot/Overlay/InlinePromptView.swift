@@ -2,7 +2,7 @@ import SwiftUI
 
 struct InlinePromptView: View {
     @ObservedObject var viewModel: InlinePromptViewModel
-    @FocusState private var isCommandFocused: Bool
+    @State private var inputHeight: CGFloat = 32
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -10,10 +10,14 @@ struct InlinePromptView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            TextEditor(text: $viewModel.commandText)
-                .font(.system(.body, design: .monospaced))
-                .focused($isCommandFocused)
-                .frame(minHeight: 72, maxHeight: 100)
+            AutoGrowingCommandInput(
+                text: $viewModel.commandText,
+                dynamicHeight: $inputHeight,
+                minHeight: 32,
+                maxHeight: 180,
+                focusRequestID: viewModel.focusRequestID
+            )
+                .frame(height: inputHeight)
                 .padding(6)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
@@ -40,22 +44,24 @@ struct InlinePromptView: View {
                     .foregroundStyle(.secondary)
             }
 
-            ScrollView {
-                Text(viewModel.outputText.isEmpty ? "No output yet." : viewModel.outputText)
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(
-                        viewModel.outputText.isEmpty
-                            ? Color(nsColor: .secondaryLabelColor)
-                            : Color(nsColor: .labelColor)
-                    )
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            if viewModel.hasExecuted {
+                ScrollView {
+                    Text(viewModel.outputText.isEmpty ? "No output yet." : viewModel.outputText)
+                        .font(.system(.body, design: .monospaced))
+                        .foregroundStyle(
+                            viewModel.outputText.isEmpty
+                                ? Color(nsColor: .secondaryLabelColor)
+                                : Color(nsColor: .labelColor)
+                        )
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(minHeight: 64, maxHeight: 110)
+                .padding(8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(nsColor: .controlBackgroundColor))
+                )
             }
-            .frame(minHeight: 64, maxHeight: 110)
-            .padding(8)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(nsColor: .controlBackgroundColor))
-            )
 
             HStack {
                 Button("Run") {
@@ -80,8 +86,5 @@ struct InlinePromptView: View {
         }
         .padding(12)
         .frame(width: 480)
-        .onAppear {
-            isCommandFocused = true
-        }
     }
 }
