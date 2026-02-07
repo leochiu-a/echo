@@ -5,6 +5,10 @@ struct EchoCopilotApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
+        WindowGroup("Echo Dashboard") {
+            DashboardView()
+        }
+
         Settings {
             SettingsView()
         }
