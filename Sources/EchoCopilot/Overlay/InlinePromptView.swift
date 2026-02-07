@@ -46,6 +46,8 @@ struct InlinePromptView: View {
             }
 
             HStack(spacing: 8) {
+                Spacer()
+
                 Menu {
                     Button(viewModel.hasSelectionContext ? "Edit Selection" : "Edit Text") {
                         viewModel.selectedAction = .edit
@@ -55,12 +57,10 @@ struct InlinePromptView: View {
                     }
                 } label: {
                     Text(viewModel.actionLabel)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color(nsColor: .secondaryLabelColor))
                 }
                 .menuStyle(.borderlessButton)
-
-                Spacer()
 
                 if viewModel.isRunning {
                     Button {
