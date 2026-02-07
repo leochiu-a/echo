@@ -2,52 +2,101 @@ import SwiftUI
 
 struct InlinePromptView: View {
     @ObservedObject var viewModel: InlinePromptViewModel
-    @State private var inputHeight: CGFloat = 32
+    @State private var inputHeight: CGFloat = 30
+
+    private var actionLabel: String {
+        viewModel.hasSelectionContext ? "Edit Selection" : "Edit Text"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Echo Copilot")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                ZStack(alignment: .topLeading) {
+                    AutoGrowingCommandInput(
+                        text: $viewModel.commandText,
+                        dynamicHeight: $inputHeight,
+                        minHeight: 30,
+                        maxHeight: 120,
+                        focusRequestID: viewModel.focusRequestID
+                    )
+                    .frame(height: inputHeight)
 
-            AutoGrowingCommandInput(
-                text: $viewModel.commandText,
-                dynamicHeight: $inputHeight,
-                minHeight: 32,
-                maxHeight: 180,
-                focusRequestID: viewModel.focusRequestID
-            )
-                .frame(height: inputHeight)
-                .padding(6)
+                    if viewModel.commandText.isEmpty {
+                        Text("Edit selected code")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+                            .padding(.leading, 2)
+                            .padding(.top, 4)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color(nsColor: .textBackgroundColor))
+                        .fill(Color(nsColor: .textBackgroundColor).opacity(0.6))
                 )
 
-            if viewModel.isRunning {
-                HStack(spacing: 8) {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text("Running...")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                Button {
+                    viewModel.close()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+                        .frame(width: 24, height: 24)
                 }
-            } else if let error = viewModel.errorText {
+                .buttonStyle(.plain)
+            }
+
+            HStack(spacing: 8) {
+                Menu {
+                    Button(actionLabel) {}
+                } label: {
+                    Text(actionLabel)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+                }
+                .menuStyle(.borderlessButton)
+
+                Spacer()
+
+                if viewModel.isRunning {
+                    Button {
+                        viewModel.cancelExecution()
+                    } label: {
+                        Image(systemName: "stop.circle.fill")
+                            .font(.system(size: 19, weight: .semibold))
+                            .foregroundStyle(Color(nsColor: .systemRed))
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Button {
+                        viewModel.execute()
+                    } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 19, weight: .semibold))
+                            .foregroundStyle(
+                                viewModel.commandText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                    ? Color(nsColor: .tertiaryLabelColor)
+                                    : Color(nsColor: .labelColor)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .keyboardShortcut(.return, modifiers: [])
+                    .disabled(viewModel.commandText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+
+            if let error = viewModel.errorText {
                 Text(error)
                     .font(.caption)
                     .foregroundStyle(.red)
             }
 
-            if let contextInfo = viewModel.selectedContextInfo {
-                Text(contextInfo)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
             if viewModel.hasExecuted {
                 ScrollView {
                     Text(viewModel.outputText.isEmpty ? "No output yet." : viewModel.outputText)
-                        .font(.system(.body, design: .monospaced))
+                        .font(.system(.callout, design: .monospaced))
                         .foregroundStyle(
                             viewModel.outputText.isEmpty
                                 ? Color(nsColor: .secondaryLabelColor)
@@ -55,42 +104,15 @@ struct InlinePromptView: View {
                         )
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(minHeight: 64, maxHeight: 110)
-                .padding(8)
+                .frame(minHeight: 52, maxHeight: 96)
+                .padding(6)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color(nsColor: .controlBackgroundColor))
                 )
             }
-
-            HStack {
-                if viewModel.isRunning {
-                    Button("Stop") {
-                        viewModel.cancelExecution()
-                    }
-                } else {
-                    Button("Run") {
-                        viewModel.execute()
-                    }
-                    .keyboardShortcut(.return, modifiers: [])
-                    .disabled(viewModel.commandText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-
-                Button("Accept") {
-                    viewModel.accept()
-                }
-                .keyboardShortcut(.return, modifiers: [.command])
-                .disabled(viewModel.isRunning)
-
-                Spacer()
-
-                Button("Close") {
-                    viewModel.close()
-                }
-                .keyboardShortcut(.escape, modifiers: [])
-            }
         }
-        .padding(12)
-        .frame(width: 480)
+        .padding(10)
+        .frame(width: 560)
     }
 }

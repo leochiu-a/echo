@@ -8,6 +8,7 @@ final class InlinePromptViewModel: ObservableObject {
     @Published var isRunning = false
     @Published var errorText: String?
     @Published var selectedContextInfo: String?
+    @Published var hasSelectionContext = false
     @Published var hasExecuted = false
     @Published var focusRequestID = UUID()
 
@@ -31,6 +32,7 @@ final class InlinePromptViewModel: ObservableObject {
         focusRequestID = UUID()
         historyIndex = nil
         selectedContextText = selectedText
+        hasSelectionContext = selectedText != nil
         if let selectedText {
             selectedContextInfo = "Using selected text context (\(selectedText.count) chars)"
         } else {
