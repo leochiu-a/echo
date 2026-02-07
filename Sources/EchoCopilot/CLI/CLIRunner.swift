@@ -21,7 +21,7 @@ enum CLIRunnerError: LocalizedError {
 }
 
 final class CLIRunner {
-    func run(command: String, timeout: TimeInterval = 60) async throws -> CLIRunnerResult {
+    func run(command: String, selectedText: String? = nil, timeout: TimeInterval = 60) async throws -> CLIRunnerResult {
         try await Task.detached(priority: .userInitiated) {
             let process = Process()
             let stdinPipe = Pipe()
@@ -61,7 +61,8 @@ final class CLIRunner {
 
             do {
                 try process.run()
-                if let input = "\(command)\n".data(using: .utf8) {
+                let composedPrompt = composePrompt(command: command, selectedText: selectedText)
+                if let input = "\(composedPrompt)\n".data(using: .utf8) {
                     stdinPipe.fileHandleForWriting.write(input)
                 }
                 try stdinPipe.fileHandleForWriting.close()
@@ -140,4 +141,27 @@ private func cleanupTempFiles(_ urls: [URL]) {
     for url in urls {
         try? FileManager.default.removeItem(at: url)
     }
+}
+
+private func composePrompt(command: String, selectedText: String?) -> String {
+    let trimmedCommand = command.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard
+        let selectedText,
+        !selectedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    else {
+        return trimmedCommand
+    }
+
+    return """
+    User instruction:
+    \(trimmedCommand)
+
+    Selected text:
+    <<<
+    \(selectedText)
+    >>>
+
+    Apply the instruction to the selected text above.
+    Return only the final result text.
+    """
 }

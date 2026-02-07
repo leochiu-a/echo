@@ -28,6 +28,7 @@ This watches `Sources/**/*.swift` and `Package.swift`, rebuilds, then restarts t
 - Press `Cmd+K` from any app to toggle panel.
 - Type a prompt.
 - Press `Enter` to run Codex (`codex exec`).
+- If text is selected in the active app when the panel opens, `Run` includes that selected text as context.
 - Press `Cmd+Enter` to accept (copies output to clipboard).
 - Press `Esc` to close.
 
@@ -35,6 +36,7 @@ This watches `Sources/**/*.swift` and `Package.swift`, rebuilds, then restarts t
 
 - Install Codex CLI and ensure `codex` is available in `PATH`.
 - Complete login first (`codex login`), otherwise Run will fail.
+- Enable Accessibility permission for Echo Copilot so selected text can be read across apps.
 
 The runner invokes:
 

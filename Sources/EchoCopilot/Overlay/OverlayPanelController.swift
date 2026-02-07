@@ -4,6 +4,7 @@ import SwiftUI
 @MainActor
 final class OverlayPanelController {
     private let viewModel = InlinePromptViewModel()
+    private let axContextManager = AXContextManager()
     private lazy var panel: FloatingPanel = makePanel()
     private var keyMonitor: Any?
     private var previousApp: NSRunningApplication?
@@ -27,7 +28,8 @@ final class OverlayPanelController {
 
     private func showNearMouse() {
         previousApp = NSWorkspace.shared.frontmostApplication
-        viewModel.prepareForPresentation()
+        let context = axContextManager.captureSnapshot()
+        viewModel.prepareForPresentation(selectedText: context.selectedText)
 
         let panelSize = panel.frame.size
         let mouse = NSEvent.mouseLocation

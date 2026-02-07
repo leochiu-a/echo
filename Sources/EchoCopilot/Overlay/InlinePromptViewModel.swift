@@ -7,6 +7,7 @@ final class InlinePromptViewModel: ObservableObject {
     @Published var outputText = ""
     @Published var isRunning = false
     @Published var errorText: String?
+    @Published var selectedContextInfo: String?
 
     var onRequestClose: (() -> Void)?
     var onRequestAccept: ((String) -> Void)?
@@ -15,14 +16,21 @@ final class InlinePromptViewModel: ObservableObject {
     private var history: [String] = []
     private var historyIndex: Int?
     private var runningTask: Task<Void, Never>?
+    private var selectedContextText: String?
 
     deinit {
         runningTask?.cancel()
     }
 
-    func prepareForPresentation() {
+    func prepareForPresentation(selectedText: String?) {
         errorText = nil
         historyIndex = nil
+        selectedContextText = selectedText
+        if let selectedText {
+            selectedContextInfo = "Using selected text context (\(selectedText.count) chars)"
+        } else {
+            selectedContextInfo = nil
+        }
     }
 
     func execute() {
@@ -43,7 +51,10 @@ final class InlinePromptViewModel: ObservableObject {
         runningTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let result = try await cliRunner.run(command: trimmed)
+                let result = try await cliRunner.run(
+                    command: trimmed,
+                    selectedText: selectedContextText
+                )
                 guard !Task.isCancelled else { return }
 
                 if result.exitCode == 0 {

@@ -34,6 +34,12 @@ struct InlinePromptView: View {
                     .foregroundStyle(.red)
             }
 
+            if let contextInfo = viewModel.selectedContextInfo {
+                Text(contextInfo)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             ScrollView {
                 Text(viewModel.outputText.isEmpty ? "No output yet." : viewModel.outputText)
                     .font(.system(.body, design: .monospaced))
