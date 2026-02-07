@@ -124,7 +124,7 @@ final class CLIRunner {
     }
 }
 
-private func enrichedEnvironment() -> [String: String] {
+func enrichedEnvironment() -> [String: String] {
     var env = ProcessInfo.processInfo.environment
     let existing = env["PATH"] ?? ""
     let required = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"]
@@ -143,22 +143,22 @@ private func enrichedEnvironment() -> [String: String] {
     return env
 }
 
-private func normalizeOutput(_ value: String) -> String {
+func normalizeOutput(_ value: String) -> String {
     if value.isEmpty { return "" }
 
-    let ansiPattern = #"\u{001B}\[[0-9;?]*[ -/]*[@-~]"#
+    let ansiPattern = "\u{001B}\\[[0-9;?]*[ -/]*[@-~]"
     return value
         .replacingOccurrences(of: ansiPattern, with: "", options: .regularExpression)
         .trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
-private func cleanupTempFiles(_ urls: [URL]) {
+func cleanupTempFiles(_ urls: [URL]) {
     for url in urls {
         try? FileManager.default.removeItem(at: url)
     }
 }
 
-private func composePrompt(command: String, selectedText: String?, action: CopilotAction) -> String {
+func composePrompt(command: String, selectedText: String?, action: CopilotAction) -> String {
     let trimmedCommand = command.trimmingCharacters(in: .whitespacesAndNewlines)
     let normalizedSelection = selectedText?.trimmingCharacters(in: .whitespacesAndNewlines)
 
