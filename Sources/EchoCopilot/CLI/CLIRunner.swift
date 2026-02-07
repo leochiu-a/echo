@@ -22,90 +22,100 @@ enum CLIRunnerError: LocalizedError {
 
 final class CLIRunner {
     func run(command: String, selectedText: String? = nil, timeout: TimeInterval = 60) async throws -> CLIRunnerResult {
-        try await Task.detached(priority: .userInitiated) {
-            let process = Process()
-            let stdinPipe = Pipe()
-            let outputFileURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("echo-copilot-last-message-\(UUID().uuidString).txt")
-            let stdoutFileURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("echo-copilot-stdout-\(UUID().uuidString).log")
-            let stderrFileURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("echo-copilot-stderr-\(UUID().uuidString).log")
+        let process = Process()
+        let stdinPipe = Pipe()
+        let outputFileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("echo-copilot-last-message-\(UUID().uuidString).txt")
+        let stdoutFileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("echo-copilot-stdout-\(UUID().uuidString).log")
+        let stderrFileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("echo-copilot-stderr-\(UUID().uuidString).log")
 
-            FileManager.default.createFile(atPath: stdoutFileURL.path, contents: nil)
-            FileManager.default.createFile(atPath: stderrFileURL.path, contents: nil)
+        FileManager.default.createFile(atPath: stdoutFileURL.path, contents: nil)
+        FileManager.default.createFile(atPath: stderrFileURL.path, contents: nil)
 
-            let stdoutWriter = try FileHandle(forWritingTo: stdoutFileURL)
-            let stderrWriter = try FileHandle(forWritingTo: stderrFileURL)
-            defer {
-                try? stdoutWriter.close()
-                try? stderrWriter.close()
-                cleanupTempFiles([outputFileURL, stdoutFileURL, stderrFileURL])
+        let stdoutWriter = try FileHandle(forWritingTo: stdoutFileURL)
+        let stderrWriter = try FileHandle(forWritingTo: stderrFileURL)
+        defer {
+            if process.isRunning {
+                process.terminate()
             }
+            try? stdoutWriter.close()
+            try? stderrWriter.close()
+            cleanupTempFiles([outputFileURL, stdoutFileURL, stderrFileURL])
+        }
 
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            process.arguments = [
-                "codex",
-                "exec",
-                "--skip-git-repo-check",
-                "--color",
-                "never",
-                "--output-last-message",
-                outputFileURL.path,
-                "-"
-            ]
-            process.environment = enrichedEnvironment()
-            process.standardOutput = stdoutWriter
-            process.standardError = stderrWriter
-            process.standardInput = stdinPipe
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = [
+            "codex",
+            "exec",
+            "--skip-git-repo-check",
+            "--color",
+            "never",
+            "--output-last-message",
+            outputFileURL.path,
+            "-"
+        ]
+        process.environment = enrichedEnvironment()
+        process.standardOutput = stdoutWriter
+        process.standardError = stderrWriter
+        process.standardInput = stdinPipe
 
+        do {
+            try process.run()
+            let composedPrompt = composePrompt(command: command, selectedText: selectedText)
+            if let input = "\(composedPrompt)\n".data(using: .utf8) {
+                stdinPipe.fileHandleForWriting.write(input)
+            }
+            try stdinPipe.fileHandleForWriting.close()
+        } catch {
+            throw CLIRunnerError.launchFailed(error.localizedDescription)
+        }
+
+        let deadline = Date().addingTimeInterval(timeout)
+        while process.isRunning {
+            if Task.isCancelled {
+                process.terminate()
+                throw CancellationError()
+            }
+            if Date() >= deadline {
+                process.terminate()
+                throw CLIRunnerError.timedOut
+            }
             do {
-                try process.run()
-                let composedPrompt = composePrompt(command: command, selectedText: selectedText)
-                if let input = "\(composedPrompt)\n".data(using: .utf8) {
-                    stdinPipe.fileHandleForWriting.write(input)
-                }
-                try stdinPipe.fileHandleForWriting.close()
-            } catch {
-                throw CLIRunnerError.launchFailed(error.localizedDescription)
-            }
-
-            let deadline = Date().addingTimeInterval(timeout)
-            while process.isRunning {
-                if Date() >= deadline {
-                    process.terminate()
-                    throw CLIRunnerError.timedOut
-                }
                 try await Task.sleep(nanoseconds: 50_000_000)
+            } catch is CancellationError {
+                process.terminate()
+                throw CancellationError()
             }
+        }
 
-            let outputFromFile = normalizeOutput(
-                (try? String(contentsOf: outputFileURL, encoding: .utf8)) ?? ""
-            )
-            let outputFromStdout = normalizeOutput(
-                (try? String(contentsOf: stdoutFileURL, encoding: .utf8)) ?? ""
-            )
-            let stderr = normalizeOutput(
-                (try? String(contentsOf: stderrFileURL, encoding: .utf8)) ?? ""
-            )
-            let stdout = outputFromFile.isEmpty ? outputFromStdout : outputFromFile
-            let exitCode = process.terminationStatus
+        let outputFromFile = normalizeOutput(
+            (try? String(contentsOf: outputFileURL, encoding: .utf8)) ?? ""
+        )
+        let outputFromStdout = normalizeOutput(
+            (try? String(contentsOf: stdoutFileURL, encoding: .utf8)) ?? ""
+        )
+        let stderr = normalizeOutput(
+            (try? String(contentsOf: stderrFileURL, encoding: .utf8)) ?? ""
+        )
+        let stdout = outputFromFile.isEmpty ? outputFromStdout : outputFromFile
+        let exitCode = process.terminationStatus
 
-            if exitCode != 0, stderr.isEmpty {
-                let pathInfo = process.environment?["PATH"] ?? "(missing)"
-                return CLIRunnerResult(
-                    stdout: stdout,
-                    stderr: "codex exec failed (exit \(exitCode)). PATH=\(pathInfo)",
-                    exitCode: exitCode
-                )
-            }
-
+        if exitCode != 0, stderr.isEmpty {
+            let pathInfo = process.environment?["PATH"] ?? "(missing)"
             return CLIRunnerResult(
                 stdout: stdout,
-                stderr: stderr,
+                stderr: "codex exec failed (exit \(exitCode)). PATH=\(pathInfo)",
                 exitCode: exitCode
             )
-        }.value
+        }
+
+        return CLIRunnerResult(
+            stdout: stdout,
+            stderr: stderr,
+            exitCode: exitCode
+        )
     }
 }
 

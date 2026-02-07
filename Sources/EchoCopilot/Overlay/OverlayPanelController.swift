@@ -102,7 +102,11 @@ final class OverlayPanelController {
 
             switch event.keyCode {
             case 53: // Esc
-                viewModel.close()
+                if viewModel.isRunning {
+                    viewModel.cancelExecution()
+                } else {
+                    viewModel.close()
+                }
                 return nil
             case 126: // Up
                 viewModel.historyUp()

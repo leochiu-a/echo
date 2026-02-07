@@ -70,16 +70,29 @@ final class InlinePromptViewModel: ObservableObject {
                         ? "CLI exited with code \(result.exitCode)."
                         : result.stderr
                 }
+            } catch is CancellationError {
+                // Cancellation is a user action; keep panel open and show stop state.
             } catch {
                 guard !Task.isCancelled else { return }
                 errorText = error.localizedDescription
             }
             isRunning = false
+            runningTask = nil
+        }
+    }
+
+    func cancelExecution(showCancelledMessage: Bool = true) {
+        guard isRunning else { return }
+        runningTask?.cancel()
+        runningTask = nil
+        isRunning = false
+        if showCancelledMessage {
+            errorText = "Stopped."
         }
     }
 
     func close() {
-        runningTask?.cancel()
+        cancelExecution(showCancelledMessage: false)
         onRequestClose?()
     }
 

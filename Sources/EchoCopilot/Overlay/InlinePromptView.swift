@@ -64,11 +64,17 @@ struct InlinePromptView: View {
             }
 
             HStack {
-                Button("Run") {
-                    viewModel.execute()
+                if viewModel.isRunning {
+                    Button("Stop") {
+                        viewModel.cancelExecution()
+                    }
+                } else {
+                    Button("Run") {
+                        viewModel.execute()
+                    }
+                    .keyboardShortcut(.return, modifiers: [])
+                    .disabled(viewModel.commandText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-                .keyboardShortcut(.return, modifiers: [])
-                .disabled(viewModel.commandText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isRunning)
 
                 Button("Accept") {
                     viewModel.accept()
