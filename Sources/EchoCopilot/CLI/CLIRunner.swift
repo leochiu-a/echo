@@ -21,7 +21,12 @@ enum CLIRunnerError: LocalizedError {
 }
 
 final class CLIRunner {
-    func run(command: String, selectedText: String? = nil, timeout: TimeInterval = 60) async throws -> CLIRunnerResult {
+    func run(
+        command: String,
+        selectedText: String? = nil,
+        action: CopilotAction = .edit,
+        timeout: TimeInterval = 60
+    ) async throws -> CLIRunnerResult {
         let process = Process()
         let stdinPipe = Pipe()
         let outputFileURL = FileManager.default.temporaryDirectory
@@ -63,7 +68,7 @@ final class CLIRunner {
 
         do {
             try process.run()
-            let composedPrompt = composePrompt(command: command, selectedText: selectedText)
+            let composedPrompt = composePrompt(command: command, selectedText: selectedText, action: action)
             if let input = "\(composedPrompt)\n".data(using: .utf8) {
                 stdinPipe.fileHandleForWriting.write(input)
             }
@@ -153,25 +158,43 @@ private func cleanupTempFiles(_ urls: [URL]) {
     }
 }
 
-private func composePrompt(command: String, selectedText: String?) -> String {
+private func composePrompt(command: String, selectedText: String?, action: CopilotAction) -> String {
     let trimmedCommand = command.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard
-        let selectedText,
-        !selectedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    else {
-        return trimmedCommand
+    let normalizedSelection = selectedText?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    switch action {
+    case .edit:
+        guard let normalizedSelection, !normalizedSelection.isEmpty else {
+            return trimmedCommand
+        }
+        return """
+        User instruction:
+        \(trimmedCommand)
+
+        Selected text:
+        <<<
+        \(normalizedSelection)
+        >>>
+
+        Apply the instruction to the selected text above.
+        Return only the final result text.
+        """
+
+    case .askQuestion:
+        guard let normalizedSelection, !normalizedSelection.isEmpty else {
+            return trimmedCommand
+        }
+        return """
+        Question:
+        \(trimmedCommand)
+
+        Context:
+        <<<
+        \(normalizedSelection)
+        >>>
+
+        Use the context above to answer the question.
+        If context is insufficient, say so briefly.
+        """
     }
-
-    return """
-    User instruction:
-    \(trimmedCommand)
-
-    Selected text:
-    <<<
-    \(selectedText)
-    >>>
-
-    Apply the instruction to the selected text above.
-    Return only the final result text.
-    """
 }

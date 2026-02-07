@@ -9,6 +9,7 @@ final class InlinePromptViewModel: ObservableObject {
     @Published var errorText: String?
     @Published var selectedContextInfo: String?
     @Published var hasSelectionContext = false
+    @Published var selectedAction: CopilotAction = .edit
     @Published var hasExecuted = false
     @Published var focusRequestID = UUID()
     @Published var isComposingInput = false
@@ -22,6 +23,10 @@ final class InlinePromptViewModel: ObservableObject {
     private var runningTask: Task<Void, Never>?
     private var selectedContextText: String?
 
+    var actionLabel: String {
+        selectedAction.title(hasSelection: hasSelectionContext)
+    }
+
     deinit {
         runningTask?.cancel()
     }
@@ -32,6 +37,7 @@ final class InlinePromptViewModel: ObservableObject {
         hasExecuted = false
         focusRequestID = UUID()
         isComposingInput = false
+        selectedAction = .edit
         historyIndex = nil
         selectedContextText = selectedText
         hasSelectionContext = selectedText != nil
@@ -63,7 +69,8 @@ final class InlinePromptViewModel: ObservableObject {
             do {
                 let result = try await cliRunner.run(
                     command: trimmed,
-                    selectedText: selectedContextText
+                    selectedText: selectedContextText,
+                    action: selectedAction
                 )
                 guard !Task.isCancelled else { return }
 

@@ -4,10 +4,6 @@ struct InlinePromptView: View {
     @ObservedObject var viewModel: InlinePromptViewModel
     @State private var inputHeight: CGFloat = 30
 
-    private var actionLabel: String {
-        viewModel.hasSelectionContext ? "Edit Selection" : "Edit Text"
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
@@ -51,9 +47,14 @@ struct InlinePromptView: View {
 
             HStack(spacing: 8) {
                 Menu {
-                    Button(actionLabel) {}
+                    Button(viewModel.hasSelectionContext ? "Edit Selection" : "Edit Text") {
+                        viewModel.selectedAction = .edit
+                    }
+                    Button("Ask Question") {
+                        viewModel.selectedAction = .askQuestion
+                    }
                 } label: {
-                    Text(actionLabel)
+                    Text(viewModel.actionLabel)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Color(nsColor: .secondaryLabelColor))
                 }

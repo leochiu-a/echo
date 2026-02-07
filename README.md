@@ -29,6 +29,7 @@ This watches `Sources/**/*.swift` and `Package.swift`, rebuilds, then restarts t
 - Type a prompt.
 - Press `Enter` to run Codex (`codex exec`).
 - If text is selected in the active app when the panel opens, `Run` includes that selected text as context.
+- Use the mode menu (`Edit Selection` / `Ask Question`) to choose rewrite vs Q&A behavior.
 - While running, click `Stop` (or press `Esc`) to cancel the in-flight request.
 - Press `Cmd+Enter` to accept (copies output to clipboard).
 - Press `Esc` to close.
