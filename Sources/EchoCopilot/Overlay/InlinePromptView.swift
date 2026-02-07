@@ -2,35 +2,45 @@ import SwiftUI
 
 struct InlinePromptView: View {
     @ObservedObject var viewModel: InlinePromptViewModel
-    @State private var inputHeight: CGFloat = 30
+    @State private var inputHeight: CGFloat = 26
+
+    private var isEditSelectionMode: Bool {
+        viewModel.selectedAction == .edit && viewModel.hasSelectionContext
+    }
+
+    private var actionLabelColor: Color {
+        isEditSelectionMode
+            ? Color(nsColor: .tertiaryLabelColor)
+            : Color(nsColor: .secondaryLabelColor)
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
                 ZStack(alignment: .topLeading) {
             AutoGrowingCommandInput(
                 text: $viewModel.commandText,
                 dynamicHeight: $inputHeight,
                 isComposing: $viewModel.isComposingInput,
-                minHeight: 30,
-                maxHeight: 120,
+                minHeight: 26,
+                maxHeight: 92,
                 focusRequestID: viewModel.focusRequestID
             )
             .frame(height: inputHeight)
 
                     if viewModel.commandText.isEmpty && !viewModel.isComposingInput {
                         Text(viewModel.actionLabel)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(Color(nsColor: .secondaryLabelColor))
-                            .padding(.leading, 2)
-                            .padding(.top, 4)
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundStyle(actionLabelColor)
+                            .padding(.leading, 1)
+                            .padding(.top, 5)
                             .allowsHitTesting(false)
                     }
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
                 .background(
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: 7)
                         .fill(Color(nsColor: .textBackgroundColor).opacity(0.6))
                 )
 
@@ -38,14 +48,14 @@ struct InlinePromptView: View {
                     viewModel.close()
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Color(nsColor: .secondaryLabelColor))
-                        .frame(width: 24, height: 24)
+                        .frame(width: 18, height: 18)
                 }
                 .buttonStyle(.plain)
             }
 
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 Spacer()
 
                 Menu {
@@ -57,8 +67,8 @@ struct InlinePromptView: View {
                     }
                 } label: {
                     Text(viewModel.actionLabel)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(actionLabelColor)
                 }
                 .menuStyle(.borderlessButton)
 
@@ -67,7 +77,7 @@ struct InlinePromptView: View {
                         viewModel.cancelExecution()
                     } label: {
                         Image(systemName: "stop.circle.fill")
-                            .font(.system(size: 19, weight: .semibold))
+                            .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(Color(nsColor: .systemRed))
                     }
                     .buttonStyle(.plain)
@@ -76,7 +86,7 @@ struct InlinePromptView: View {
                         viewModel.execute()
                     } label: {
                         Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 19, weight: .semibold))
+                            .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(
                                 viewModel.commandText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                                     ? Color(nsColor: .tertiaryLabelColor)
@@ -91,14 +101,14 @@ struct InlinePromptView: View {
 
             if let error = viewModel.errorText {
                 Text(error)
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.red)
             }
 
             if viewModel.hasExecuted {
                 ScrollView {
                     Text(viewModel.outputText.isEmpty ? "No output yet." : viewModel.outputText)
-                        .font(.system(.callout, design: .monospaced))
+                        .font(.system(.footnote, design: .monospaced))
                         .foregroundStyle(
                             viewModel.outputText.isEmpty
                                 ? Color(nsColor: .secondaryLabelColor)
@@ -106,15 +116,15 @@ struct InlinePromptView: View {
                         )
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(minHeight: 52, maxHeight: 96)
-                .padding(6)
+                .frame(minHeight: 44, maxHeight: 84)
+                .padding(5)
                 .background(
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: 7)
                         .fill(Color(nsColor: .controlBackgroundColor))
                 )
             }
         }
-        .padding(10)
-        .frame(width: 560)
+        .padding(8)
+        .frame(width: 540)
     }
 }

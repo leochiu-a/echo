@@ -32,9 +32,10 @@ struct AutoGrowingCommandInput: NSViewRepresentable {
         textView.usesRuler = false
         textView.drawsBackground = false
         textView.backgroundColor = .clear
+        textView.insertionPointColor = .labelColor
         textView.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
         textView.string = text
-        textView.textContainerInset = NSSize(width: 0, height: 4)
+        textView.textContainerInset = NSSize(width: 0, height: 5)
         textView.textContainer?.lineFragmentPadding = 0
         textView.textContainer?.widthTracksTextView = true
         textView.isVerticallyResizable = true
@@ -124,7 +125,8 @@ final class IMEAwareTextView: NSTextView {
     var onMarkedTextStateChange: ((Bool) -> Void)?
 
     override func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
-        super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange)
+        let updatedMarkedText = normalizedMarkedText(string)
+        super.setMarkedText(updatedMarkedText, selectedRange: selectedRange, replacementRange: replacementRange)
         onMarkedTextStateChange?(hasMarkedText())
     }
 
@@ -136,5 +138,29 @@ final class IMEAwareTextView: NSTextView {
     override func didChangeText() {
         super.didChangeText()
         onMarkedTextStateChange?(hasMarkedText())
+    }
+
+    private func normalizedMarkedText(_ input: Any) -> NSAttributedString {
+        if let attributed = input as? NSAttributedString {
+            let mutable = NSMutableAttributedString(attributedString: attributed)
+            mutable.addAttributes([
+                .underlineColor: NSColor.labelColor,
+                .foregroundColor: NSColor.labelColor
+            ], range: NSRange(location: 0, length: mutable.length))
+            return mutable
+        }
+
+        if let text = input as? String {
+            return NSAttributedString(
+                string: text,
+                attributes: [
+                    .underlineStyle: NSUnderlineStyle.single.rawValue,
+                    .underlineColor: NSColor.labelColor,
+                    .foregroundColor: NSColor.labelColor
+                ]
+            )
+        }
+
+        return NSAttributedString(string: "\(input)")
     }
 }
