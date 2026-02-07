@@ -51,16 +51,23 @@ final class CLIRunner {
         }
 
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = [
+        var arguments = [
             "codex",
             "exec",
             "--skip-git-repo-check",
             "--color",
-            "never",
-            "--output-last-message",
-            outputFileURL.path,
-            "-"
+            "never"
         ]
+
+        let configuredModel = await MainActor.run {
+            AppSettingsStore.shared.codexModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if !configuredModel.isEmpty {
+            arguments.append(contentsOf: ["--model", configuredModel])
+        }
+
+        arguments.append(contentsOf: ["--output-last-message", outputFileURL.path, "-"])
+        process.arguments = arguments
         process.environment = enrichedEnvironment()
         process.standardOutput = stdoutWriter
         process.standardError = stderrWriter

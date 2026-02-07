@@ -5,6 +5,7 @@ import SwiftUI
 final class OverlayPanelController {
     private let viewModel = InlinePromptViewModel()
     private let axContextManager = AXContextManager()
+    private let settingsStore = AppSettingsStore.shared
     private lazy var panel: FloatingPanel = makePanel()
     private var keyMonitor: Any?
     private var previousApp: NSRunningApplication?
@@ -106,6 +107,16 @@ final class OverlayPanelController {
                 return event
             }
 
+            if settingsStore.replaceShortcut.matches(event), viewModel.canShowApplyButtons {
+                viewModel.replaceOutput()
+                return nil
+            }
+
+            if settingsStore.insertShortcut.matches(event), viewModel.canShowApplyButtons {
+                viewModel.insertOutput()
+                return nil
+            }
+
             switch event.keyCode {
             case 53: // Esc
                 if viewModel.isRunning {
@@ -121,13 +132,7 @@ final class OverlayPanelController {
                 viewModel.historyDown()
                 return nil
             case 36: // Return
-                if event.modifierFlags.contains(.command), viewModel.canShowApplyButtons {
-                    viewModel.replaceOutput()
-                    return nil
-                }
-                if event.modifierFlags.intersection([.command, .option, .control]).isEmpty
-                    && !event.modifierFlags.contains(.shift)
-                {
+                if event.modifierFlags.normalizedShortcutModifiers.isEmpty {
                     viewModel.execute()
                     return nil
                 }

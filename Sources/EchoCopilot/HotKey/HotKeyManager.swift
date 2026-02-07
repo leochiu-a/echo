@@ -12,7 +12,7 @@ final class HotKeyManager {
         unregister()
     }
 
-    func registerCmdK() {
+    func register(shortcut: KeyboardShortcut) {
         unregister()
 
         registeredHotKeyID = EventHotKeyID(signature: fourCharCode("ECHK"), id: 1)
@@ -32,8 +32,8 @@ final class HotKeyManager {
         )
 
         RegisterEventHotKey(
-            UInt32(kVK_ANSI_K),
-            UInt32(cmdKey),
+            UInt32(shortcut.keyCode),
+            shortcut.carbonModifiers,
             registeredHotKeyID,
             GetApplicationEventTarget(),
             0,

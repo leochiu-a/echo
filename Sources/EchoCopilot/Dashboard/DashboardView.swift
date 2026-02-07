@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DashboardView: View {
     @StateObject private var viewModel = DashboardViewModel()
+    @StateObject private var settingsStore = AppSettingsStore.shared
     @State private var isVisible = false
     @State private var selectedSection: DashboardSection = .home
 
@@ -25,10 +26,13 @@ struct DashboardView: View {
                     VStack(spacing: 16) {
                         heroHeader
 
-                        if selectedSection == .home {
+                        switch selectedSection {
+                        case .home:
                             homeContent
-                        } else {
+                        case .history:
                             historyContent
+                        case .settings:
+                            settingsContent
                         }
                     }
                     .padding(20)
@@ -68,13 +72,15 @@ struct DashboardView: View {
 
             Spacer()
 
-            Button {
-                viewModel.refresh(section: selectedSection)
-            } label: {
-                Label("Refresh", systemImage: "arrow.clockwise")
+            if selectedSection != .settings {
+                Button {
+                    viewModel.refresh(section: selectedSection)
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(DashboardTheme.actionTint)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(DashboardTheme.actionTint)
         }
         .padding(18)
         .background(
@@ -175,6 +181,10 @@ struct DashboardView: View {
         }
     }
 
+    private var settingsContent: some View {
+        SettingsPanel(settingsStore: settingsStore)
+    }
+
     private var backgroundLayer: some View {
         ZStack {
             LinearGradient(
@@ -222,6 +232,7 @@ private struct TypelessSidebar: View {
             VStack(spacing: 8) {
                 navButton(section: .home, icon: "house", title: "Home")
                 navButton(section: .history, icon: "clock.arrow.circlepath", title: "History")
+                navButton(section: .settings, icon: "gearshape", title: "Settings")
             }
 
             Spacer()
@@ -275,6 +286,169 @@ private struct TypelessSidebar: View {
             return DashboardTheme.sidebarHover
         }
         return .clear
+    }
+}
+
+private struct SettingsPanel: View {
+    @ObservedObject var settingsStore: AppSettingsStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Model")
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(DashboardTheme.primaryText)
+
+            VStack(alignment: .leading, spacing: 8) {
+                TextField("Codex model (for example: gpt-5)", text: $settingsStore.codexModel)
+                    .textFieldStyle(.roundedBorder)
+
+                HStack(spacing: 8) {
+                    modelChip("gpt-5")
+                    modelChip("gpt-5-mini")
+                    modelChip("gpt-4.1")
+                }
+
+                Text("This value is passed to `codex exec --model`.")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(DashboardTheme.subtleText)
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(DashboardTheme.cardBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .strokeBorder(DashboardTheme.cardBorder, lineWidth: 1)
+                    )
+            )
+
+            Text("Shortcuts")
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(DashboardTheme.primaryText)
+
+            VStack(spacing: 10) {
+                ShortcutRecorderField(
+                    title: "Open Input Panel",
+                    subtitle: "Global shortcut to toggle the floating input panel.",
+                    shortcut: $settingsStore.openPanelShortcut
+                )
+                ShortcutRecorderField(
+                    title: "Replace Output",
+                    subtitle: "Apply output by replacing selected text.",
+                    shortcut: $settingsStore.replaceShortcut
+                )
+                ShortcutRecorderField(
+                    title: "Insert Output",
+                    subtitle: "Apply output by inserting next to current selection.",
+                    shortcut: $settingsStore.insertShortcut
+                )
+            }
+
+            HStack {
+                Text("Press recorder button, then type a key combination (Esc to cancel).")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(DashboardTheme.subtleText)
+                Spacer()
+                Button("Reset Defaults") {
+                    settingsStore.resetToDefaults()
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    private func modelChip(_ value: String) -> some View {
+        Button {
+            settingsStore.codexModel = value
+        } label: {
+            Text(value)
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(settingsStore.codexModel == value ? DashboardTheme.sidebarActive : Color.white.opacity(0.6))
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct ShortcutRecorderField: View {
+    let title: String
+    let subtitle: String
+    @Binding var shortcut: KeyboardShortcut
+
+    @State private var isRecording = false
+    @State private var eventMonitor: Any?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(DashboardTheme.primaryText)
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(DashboardTheme.subtleText)
+            }
+            Spacer()
+
+            Button {
+                toggleRecording()
+            } label: {
+                Text(isRecording ? "Press Shortcut..." : shortcut.displayText)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .frame(minWidth: 150)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(isRecording ? DashboardTheme.warnTint : DashboardTheme.actionTint)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(DashboardTheme.cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(DashboardTheme.cardBorder, lineWidth: 1)
+                )
+        )
+        .onDisappear {
+            stopRecording()
+        }
+    }
+
+    private func toggleRecording() {
+        isRecording ? stopRecording() : startRecording()
+    }
+
+    private func startRecording() {
+        stopRecording()
+        isRecording = true
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
+            if event.keyCode == 53 {
+                stopRecording()
+                return nil
+            }
+
+            let modifiers = event.modifierFlags.normalizedShortcutModifiers
+            guard !modifiers.isEmpty else {
+                NSSound.beep()
+                return nil
+            }
+
+            shortcut = KeyboardShortcut(keyCode: event.keyCode, modifiers: modifiers)
+            stopRecording()
+            return nil
+        }
+    }
+
+    private func stopRecording() {
+        isRecording = false
+        if let eventMonitor {
+            NSEvent.removeMonitor(eventMonitor)
+            self.eventMonitor = nil
+        }
     }
 }
 
@@ -589,6 +763,8 @@ private final class DashboardViewModel: ObservableObject {
             snapshot = DashboardSnapshot.homeLibrary[homeIndex]
         case .history:
             snapshot = DashboardSnapshot.historyLibrary[historyIndex]
+        case .settings:
+            break
         }
     }
 
@@ -600,6 +776,8 @@ private final class DashboardViewModel: ObservableObject {
         case .history:
             historyIndex = (historyIndex + 1) % DashboardSnapshot.historyLibrary.count
             snapshot = DashboardSnapshot.historyLibrary[historyIndex]
+        case .settings:
+            break
         }
     }
 }
@@ -607,6 +785,7 @@ private final class DashboardViewModel: ObservableObject {
 private enum DashboardSection: String, CaseIterable, Identifiable {
     case home
     case history
+    case settings
 
     var id: String { rawValue }
 
@@ -614,6 +793,7 @@ private enum DashboardSection: String, CaseIterable, Identifiable {
         switch self {
         case .home: return "Speak naturally, write perfectly"
         case .history: return "History records"
+        case .settings: return "Settings"
         }
     }
 
@@ -621,6 +801,7 @@ private enum DashboardSection: String, CaseIterable, Identifiable {
         switch self {
         case .home: return "Fake dashboard data for layout and interaction preview."
         case .history: return "Mock event timeline while backend data is not connected."
+        case .settings: return "Configure model and shortcuts for input, replace, and insert actions."
         }
     }
 }
