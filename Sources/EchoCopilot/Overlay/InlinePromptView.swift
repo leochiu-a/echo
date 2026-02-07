@@ -12,16 +12,17 @@ struct InlinePromptView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 ZStack(alignment: .topLeading) {
-                    AutoGrowingCommandInput(
-                        text: $viewModel.commandText,
-                        dynamicHeight: $inputHeight,
-                        minHeight: 30,
-                        maxHeight: 120,
-                        focusRequestID: viewModel.focusRequestID
-                    )
-                    .frame(height: inputHeight)
+            AutoGrowingCommandInput(
+                text: $viewModel.commandText,
+                dynamicHeight: $inputHeight,
+                isComposing: $viewModel.isComposingInput,
+                minHeight: 30,
+                maxHeight: 120,
+                focusRequestID: viewModel.focusRequestID
+            )
+            .frame(height: inputHeight)
 
-                    if viewModel.commandText.isEmpty {
+                    if viewModel.commandText.isEmpty && !viewModel.isComposingInput {
                         Text("Edit selected code")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(Color(nsColor: .secondaryLabelColor))

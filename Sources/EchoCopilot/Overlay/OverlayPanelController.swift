@@ -99,6 +99,9 @@ final class OverlayPanelController {
         uninstallKeyMonitor()
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
             guard let self else { return event }
+            if isInputMethodComposing {
+                return event
+            }
 
             switch event.keyCode {
             case 53: // Esc
@@ -130,6 +133,13 @@ final class OverlayPanelController {
                 return event
             }
         }
+    }
+
+    private var isInputMethodComposing: Bool {
+        guard let textView = panel.firstResponder as? NSTextView else {
+            return false
+        }
+        return textView.hasMarkedText()
     }
 
     private func uninstallKeyMonitor() {

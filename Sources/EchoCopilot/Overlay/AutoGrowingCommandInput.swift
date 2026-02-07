@@ -4,6 +4,7 @@ import SwiftUI
 struct AutoGrowingCommandInput: NSViewRepresentable {
     @Binding var text: String
     @Binding var dynamicHeight: CGFloat
+    @Binding var isComposing: Bool
 
     let minHeight: CGFloat
     let maxHeight: CGFloat
@@ -23,7 +24,7 @@ struct AutoGrowingCommandInput: NSViewRepresentable {
         scrollView.verticalScrollElasticity = .none
         scrollView.horizontalScrollElasticity = .none
 
-        let textView = NSTextView()
+        let textView = IMEAwareTextView()
         textView.isEditable = true
         textView.isSelectable = true
         textView.isRichText = false
@@ -39,6 +40,11 @@ struct AutoGrowingCommandInput: NSViewRepresentable {
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.delegate = context.coordinator
+        textView.onMarkedTextStateChange = { composing in
+            DispatchQueue.main.async {
+                isComposing = composing
+            }
+        }
 
         scrollView.documentView = textView
         context.coordinator.textView = textView
@@ -59,9 +65,10 @@ struct AutoGrowingCommandInput: NSViewRepresentable {
         scrollView.hasVerticalScroller = false
         scrollView.hasHorizontalScroller = false
 
-        if textView.string != text {
+        if textView.string != text, !textView.hasMarkedText() {
             textView.string = text
         }
+        isComposing = textView.hasMarkedText()
 
         if context.coordinator.lastFocusRequestID != focusRequestID {
             context.coordinator.lastFocusRequestID = focusRequestID
@@ -107,7 +114,27 @@ struct AutoGrowingCommandInput: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView else { return }
             parent.text = textView.string
+            parent.isComposing = textView.hasMarkedText()
             parent.updateMeasuredHeight(for: textView)
         }
+    }
+}
+
+final class IMEAwareTextView: NSTextView {
+    var onMarkedTextStateChange: ((Bool) -> Void)?
+
+    override func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
+        super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange)
+        onMarkedTextStateChange?(hasMarkedText())
+    }
+
+    override func unmarkText() {
+        super.unmarkText()
+        onMarkedTextStateChange?(hasMarkedText())
+    }
+
+    override func didChangeText() {
+        super.didChangeText()
+        onMarkedTextStateChange?(hasMarkedText())
     }
 }

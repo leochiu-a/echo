@@ -11,6 +11,7 @@ final class InlinePromptViewModel: ObservableObject {
     @Published var hasSelectionContext = false
     @Published var hasExecuted = false
     @Published var focusRequestID = UUID()
+    @Published var isComposingInput = false
 
     var onRequestClose: (() -> Void)?
     var onRequestAccept: ((String) -> Void)?
@@ -30,6 +31,7 @@ final class InlinePromptViewModel: ObservableObject {
         errorText = nil
         hasExecuted = false
         focusRequestID = UUID()
+        isComposingInput = false
         historyIndex = nil
         selectedContextText = selectedText
         hasSelectionContext = selectedText != nil
