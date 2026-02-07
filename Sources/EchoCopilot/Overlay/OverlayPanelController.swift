@@ -49,7 +49,7 @@ final class OverlayPanelController {
     private func makePanel() -> FloatingPanel {
         let panel = FloatingPanel(
             contentRect: NSRect(x: 0, y: 0, width: 480, height: 260),
-            styleMask: [.borderless, .nonactivatingPanel],
+            styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
@@ -57,8 +57,9 @@ final class OverlayPanelController {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.level = .floating
+        panel.isFloatingPanel = true
         panel.hasShadow = true
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false
 
         let content = InlinePromptView(viewModel: viewModel)

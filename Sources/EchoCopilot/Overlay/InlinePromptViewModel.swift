@@ -32,6 +32,7 @@ final class InlinePromptViewModel: ObservableObject {
 
         isRunning = true
         errorText = nil
+        outputText = ""
         historyIndex = nil
 
         if history.last != trimmed {

@@ -34,19 +34,22 @@ struct InlinePromptView: View {
                     .foregroundStyle(.red)
             }
 
-            if !viewModel.outputText.isEmpty {
-                ScrollView {
-                    Text(viewModel.outputText)
-                        .font(.system(.body, design: .monospaced))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(maxHeight: 110)
-                .padding(8)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color(nsColor: .controlBackgroundColor))
-                )
+            ScrollView {
+                Text(viewModel.outputText.isEmpty ? "No output yet." : viewModel.outputText)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundStyle(
+                        viewModel.outputText.isEmpty
+                            ? Color(nsColor: .secondaryLabelColor)
+                            : Color(nsColor: .labelColor)
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(minHeight: 64, maxHeight: 110)
+            .padding(8)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color(nsColor: .controlBackgroundColor))
+            )
 
             HStack {
                 Button("Run") {
