@@ -19,7 +19,7 @@ struct InlinePromptView: View {
             .frame(height: inputHeight)
 
                     if viewModel.commandText.isEmpty && !viewModel.isComposingInput {
-                        Text("Edit selected code")
+                        Text(viewModel.actionLabel)
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(Color(nsColor: .secondaryLabelColor))
                             .padding(.leading, 2)
