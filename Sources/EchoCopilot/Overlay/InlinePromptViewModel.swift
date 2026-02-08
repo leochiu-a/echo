@@ -199,16 +199,75 @@ final class InlinePromptViewModel: ObservableObject {
     }
 
     private func summarizedFailureDetail(from rawMessage: String) -> String {
-        let firstLine = rawMessage
-            .split(whereSeparator: \.isNewline)
-            .first
-            .map(String.init)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        let message = (firstLine?.isEmpty == false ? firstLine : "Execution failed.") ?? "Execution failed."
-        if message.count <= 160 {
-            return message
-        }
-        let limited = String(message.prefix(157))
-        return "\(limited)..."
+        summarizeCLIErrorMessage(rawMessage)
     }
+}
+
+func summarizeCLIErrorMessage(_ rawMessage: String) -> String {
+    if let apiDetail = extractAPIDetail(from: rawMessage) {
+        return clippedErrorMessage(apiDetail)
+    }
+
+    let lines = rawMessage
+        .split(whereSeparator: \.isNewline)
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .filter { !$0.isEmpty }
+
+    let message =
+        lines.first(where: isLikelyErrorLine)
+        ?? lines.first(where: { !isLikelyNoiseLine($0) })
+        ?? "Execution failed."
+
+    return clippedErrorMessage(message.replacingOccurrences(of: "ERROR:", with: "").trimmingCharacters(in: .whitespacesAndNewlines))
+}
+
+private func extractAPIDetail(from rawMessage: String) -> String? {
+    guard let startRange = rawMessage.range(of: "\"detail\":\"") else {
+        return nil
+    }
+    let suffix = rawMessage[startRange.upperBound...]
+    guard let endIndex = suffix.firstIndex(of: "\"") else {
+        return nil
+    }
+    let detail = String(suffix[..<endIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+    return detail.isEmpty ? nil : detail
+}
+
+private func isLikelyErrorLine(_ line: String) -> Bool {
+    let lowered = line.lowercased()
+    return lowered.contains("error")
+        || lowered.contains("failed")
+        || lowered.contains("not supported")
+        || lowered.contains("timed out")
+        || lowered.contains("unauthorized")
+        || lowered.contains("forbidden")
+}
+
+private func isLikelyNoiseLine(_ line: String) -> Bool {
+    let lowered = line.lowercased()
+    if lowered.hasPrefix("openai codex v") { return true }
+    if lowered == "--------" { return true }
+    if lowered.hasPrefix("workdir:") { return true }
+    if lowered.hasPrefix("model:") { return true }
+    if lowered.hasPrefix("provider:") { return true }
+    if lowered.hasPrefix("approval:") { return true }
+    if lowered.hasPrefix("sandbox:") { return true }
+    if lowered.hasPrefix("reasoning effort:") { return true }
+    if lowered.hasPrefix("reasoning summaries:") { return true }
+    if lowered.hasPrefix("session id:") { return true }
+    if lowered.hasPrefix("mcp:") { return true }
+    if lowered.hasPrefix("mcp startup:") { return true }
+    if lowered.hasPrefix("tokens used") { return true }
+    if lowered == "user" || lowered == "codex" || lowered == "thinking" { return true }
+    return lowered.hasPrefix("20") && lowered.contains(" warn ")
+}
+
+private func clippedErrorMessage(_ message: String) -> String {
+    let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+    let normalized = trimmed.isEmpty ? "Execution failed." : trimmed
+    if normalized.count <= 160 {
+        return normalized
+    }
+    let limited = String(normalized.prefix(157))
+    return "\(limited)..."
 }

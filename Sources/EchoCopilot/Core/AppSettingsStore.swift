@@ -64,30 +64,28 @@ final class AppSettingsStore: ObservableObject {
     }
 
     static let supportedCodexModels = [
-        "GPT-5.2-Codex",
-        "GPT-5.3-Codex",
-        "GPT-5.1-Codex-Max",
-        "GPT-5.2",
-        "GPT-5.1-Codex-Mini"
+        "gpt-5.3-codex",
+        "gpt-5-codex"
     ]
-    static let defaultCodexModel = "GPT-5.3-Codex"
+    static let defaultCodexModel = "gpt-5.3-codex"
     static let defaultOpenPanelShortcut = KeyboardShortcut(keyCode: UInt16(kVK_ANSI_K), modifiers: [.command])
     static let defaultReplaceShortcut = KeyboardShortcut(keyCode: UInt16(kVK_Return), modifiers: [.command])
     static let defaultInsertShortcut = KeyboardShortcut(keyCode: UInt16(kVK_Return), modifiers: [.command, .shift])
 
-    private enum StorageKey {
+    enum StorageKey {
         static let codexModel = "echo.settings.codexModel"
         static let openPanelShortcut = "echo.settings.openPanelShortcut"
         static let replaceShortcut = "echo.settings.replaceShortcut"
         static let insertShortcut = "echo.settings.insertShortcut"
     }
 
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     private var isBootstrapping = true
 
-    private init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         codexModel = Self.defaultCodexModel
         openPanelShortcut = Self.defaultOpenPanelShortcut
         replaceShortcut = Self.defaultReplaceShortcut
@@ -95,8 +93,13 @@ final class AppSettingsStore: ObservableObject {
 
         if let storedModel = defaults.string(forKey: StorageKey.codexModel) {
             let trimmed = storedModel.trimmingCharacters(in: .whitespacesAndNewlines)
-            if Self.supportedCodexModels.contains(trimmed) {
-                codexModel = trimmed
+            if let canonicalModel = Self.canonicalModel(for: trimmed) {
+                codexModel = canonicalModel
+                if storedModel != canonicalModel {
+                    defaults.set(canonicalModel, forKey: StorageKey.codexModel)
+                }
+            } else {
+                defaults.set(Self.defaultCodexModel, forKey: StorageKey.codexModel)
             }
         }
         openPanelShortcut = decodeShortcut(forKey: StorageKey.openPanelShortcut) ?? Self.defaultOpenPanelShortcut
@@ -116,15 +119,26 @@ final class AppSettingsStore: ObservableObject {
     private func persistModelIfNeeded() {
         guard !isBootstrapping else { return }
         let trimmed = codexModel.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard Self.supportedCodexModels.contains(trimmed) else {
+        guard let canonicalModel = Self.canonicalModel(for: trimmed) else {
             codexModel = Self.defaultCodexModel
             defaults.set(Self.defaultCodexModel, forKey: StorageKey.codexModel)
             NotificationCenter.default.post(name: .appSettingsDidChange, object: nil)
             return
         }
 
-        defaults.set(trimmed, forKey: StorageKey.codexModel)
+        if codexModel != canonicalModel {
+            codexModel = canonicalModel
+            return
+        }
+
+        defaults.set(canonicalModel, forKey: StorageKey.codexModel)
         NotificationCenter.default.post(name: .appSettingsDidChange, object: nil)
+    }
+
+    static func canonicalModel(for value: String) -> String? {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !normalized.isEmpty else { return nil }
+        return supportedCodexModels.first { $0.caseInsensitiveCompare(normalized) == .orderedSame }
     }
 
     private func persistShortcutIfNeeded(_ shortcut: KeyboardShortcut, key: String) {
