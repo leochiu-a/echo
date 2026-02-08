@@ -5,6 +5,8 @@ struct DashboardSettingsSection: View {
     @ObservedObject var settingsStore: AppSettingsStore
     private let modelOptions = AppSettingsStore.supportedCodexModels
     private let effortOptions = AppSettingsStore.supportedReasoningEfforts
+    @State private var saveButtonShowsCheck = false
+    @State private var feedbackToken = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -64,8 +66,16 @@ struct DashboardSettingsSection: View {
 
             HStack {
                 Spacer()
-                Button("Save Settings") {
-                    ensureSelectionsValid()
+                Button {
+                    saveSettings()
+                } label: {
+                    HStack(spacing: 8) {
+                        if saveButtonShowsCheck {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 12, weight: .bold))
+                        }
+                        Text(saveButtonShowsCheck ? "Saved" : "Save Settings")
+                    }
                 }
                 .buttonStyle(.plain)
                 .pointerOnHover()
@@ -75,13 +85,18 @@ struct DashboardSettingsSection: View {
                 .padding(.vertical, 12)
                 .background(
                     Capsule()
-                        .fill(DashboardTheme.actionTint)
+                        .fill(saveButtonShowsCheck ? DashboardTheme.goodTint : DashboardTheme.actionTint)
                         .overlay(
                             Capsule()
                                 .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
                         )
                 )
-                .shadow(color: DashboardTheme.actionTint.opacity(0.25), radius: 8, x: 0, y: 3)
+                .shadow(
+                    color: (saveButtonShowsCheck ? DashboardTheme.goodTint : DashboardTheme.actionTint).opacity(0.25),
+                    radius: 8,
+                    x: 0,
+                    y: 3
+                )
             }
         }
         .padding(.top, 4)
@@ -96,6 +111,27 @@ struct DashboardSettingsSection: View {
         }
         if !effortOptions.contains(settingsStore.codexReasoningEffort) {
             settingsStore.codexReasoningEffort = AppSettingsStore.defaultCodexReasoningEffort
+        }
+    }
+
+    private func saveSettings() {
+        ensureSelectionsValid()
+        triggerSaveFeedback()
+    }
+
+    private func triggerSaveFeedback() {
+        feedbackToken += 1
+        let currentToken = feedbackToken
+
+        withAnimation(.spring(response: 0.24, dampingFraction: 0.86)) {
+            saveButtonShowsCheck = true
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+            guard currentToken == feedbackToken else { return }
+            withAnimation(.easeOut(duration: 0.18)) {
+                saveButtonShowsCheck = false
+            }
         }
     }
 
