@@ -346,6 +346,8 @@ private struct HistoryResponseSheet: View {
         }
         .padding(16)
         .frame(minWidth: 720, minHeight: 460)
+        .background(Color.white)
+        .environment(\.colorScheme, .light)
     }
 
     private func timestamp(_ date: Date) -> String {
