@@ -158,6 +158,37 @@ func executeWithBlankCommandDoesNotStartRunning() {
 }
 
 @Test
+@MainActor
+func copyableOutputTextReturnsNilWhenOutputIsEmpty() {
+    let viewModel = InlinePromptViewModel()
+    viewModel.outputText = ""
+
+    #expect(viewModel.copyableOutputText == nil)
+}
+
+@Test
+@MainActor
+func copyableOutputTextReturnsOutputWhenPresent() {
+    let viewModel = InlinePromptViewModel()
+    viewModel.commandText = "input prompt"
+    viewModel.outputText = "generated output"
+
+    #expect(viewModel.copyableOutputText == "generated output")
+}
+
+@Test
+@MainActor
+func showCopiedFeedbackShowsThenClearsMessage() async {
+    let viewModel = InlinePromptViewModel()
+
+    viewModel.showCopiedFeedback()
+    #expect(viewModel.copyFeedbackText == "Copied!")
+
+    try? await Task.sleep(nanoseconds: 1_300_000_000)
+    #expect(viewModel.copyFeedbackText == nil)
+}
+
+@Test
 func resolveSlashCommandPromptKeepsOriginalWhenCommandNotFound() {
     let output = resolveSlashCommandPrompt(
         input: "/unknown please rewrite this",

@@ -35,6 +35,7 @@ final class InlinePromptViewModel: ObservableObject {
     @Published var selectedAction: CopilotAction = .edit
     @Published var focusRequestID = UUID()
     @Published var isComposingInput = false
+    @Published private(set) var copyFeedbackText: String?
     @Published private(set) var slashSuggestions: [SlashCommandAutocompleteSuggestion] = []
     @Published private(set) var highlightedSlashSuggestionIndex = 0
 
@@ -46,6 +47,7 @@ final class InlinePromptViewModel: ObservableObject {
     private let settingsStore: AppSettingsStore
     private var historyIndex: Int?
     private var runningTask: Task<Void, Never>?
+    private var copyFeedbackHideTask: Task<Void, Never>?
     private var selectedContextText: String?
     private var cancellables = Set<AnyCancellable>()
     private var suppressHistoryReset = false
@@ -78,13 +80,22 @@ final class InlinePromptViewModel: ObservableObject {
         !slashSuggestions.isEmpty
     }
 
+    var copyableOutputText: String? {
+        guard !outputText.isEmpty else { return nil }
+        return outputText
+    }
+
     deinit {
         runningTask?.cancel()
+        copyFeedbackHideTask?.cancel()
     }
 
     func prepareForPresentation(selectedText: String?, hasEditableSelection: Bool) {
         outputText = ""
         errorText = nil
+        copyFeedbackText = nil
+        copyFeedbackHideTask?.cancel()
+        copyFeedbackHideTask = nil
         focusRequestID = UUID()
         isComposingInput = false
         selectedAction = .edit
@@ -222,6 +233,21 @@ final class InlinePromptViewModel: ObservableObject {
         let value = outputText.isEmpty ? commandText : outputText
         onRequestAccept?(value, .insert)
         onRequestClose?()
+    }
+
+    func showCopiedFeedback() {
+        copyFeedbackHideTask?.cancel()
+        copyFeedbackText = "Copied!"
+
+        copyFeedbackHideTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_100_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard let self else { return }
+                copyFeedbackText = nil
+                copyFeedbackHideTask = nil
+            }
+        }
     }
 
     func historyUp() {

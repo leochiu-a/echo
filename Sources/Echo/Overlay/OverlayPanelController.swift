@@ -123,6 +123,15 @@ final class OverlayPanelController {
                 return event
             }
 
+            if isCopyShortcut(event),
+               !isFirstResponderSelectionNonEmpty,
+               let output = viewModel.copyableOutputText
+            {
+                copyToClipboard(output)
+                viewModel.showCopiedFeedback()
+                return nil
+            }
+
             if settingsStore.replaceShortcut.matches(event), viewModel.canShowApplyButtons {
                 viewModel.replaceOutput()
                 return nil
@@ -180,6 +189,20 @@ final class OverlayPanelController {
             return false
         }
         return textView.hasMarkedText()
+    }
+
+    private var isFirstResponderSelectionNonEmpty: Bool {
+        guard let textView = panel.firstResponder as? NSTextView else {
+            return false
+        }
+        return textView.selectedRange.length > 0
+    }
+
+    private func isCopyShortcut(_ event: NSEvent) -> Bool {
+        guard event.modifierFlags.normalizedShortcutModifiers == [.command] else {
+            return false
+        }
+        return event.charactersIgnoringModifiers?.lowercased() == "c"
     }
 
     private func uninstallKeyMonitor() {
