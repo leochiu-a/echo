@@ -26,10 +26,6 @@ struct DashboardView: View {
 
                 ScrollView {
                     VStack(spacing: 16) {
-                        if selectedSection != .settings {
-                            heroHeader
-                        }
-
                         switch selectedSection {
                         case .home:
                             homeContent
@@ -64,50 +60,12 @@ struct DashboardView: View {
         }
     }
 
-    private var heroHeader: some View {
-        let titleFontSize: CGFloat = selectedSection == .settings ? 24 : 28
-        let subtitleFontSize: CGFloat = selectedSection == .settings ? 12 : 13
-
-        return HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text(selectedSection.title)
-                    .font(.system(size: titleFontSize, weight: .bold, design: .rounded))
-                    .foregroundStyle(DashboardTheme.primaryText)
-                Text(selectedSection.subtitle)
-                    .font(.system(size: subtitleFontSize, weight: .medium, design: .rounded))
-                    .foregroundStyle(DashboardTheme.subtleText)
-            }
-
-            Spacer()
-
-            if selectedSection != .settings {
-                Button {
-                    if selectedSection == .history {
-                        historyStore.reload()
-                    } else {
-                        viewModel.refresh(section: selectedSection)
-                    }
-                } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(DashboardTheme.actionTint)
-                .pointerOnHover()
-            }
-        }
-        .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.78))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .strokeBorder(Color.white.opacity(0.5), lineWidth: 1)
-                )
-        )
-    }
-
     private var homeContent: some View {
-        VStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: 20) {
+            sectionHeading(for: .home)
+
+            SettingsSectionHeader(icon: "chart.bar.xaxis", title: "Overview")
+
             HStack(alignment: .top, spacing: 12) {
                 FocusMetricCard(metric: viewModel.snapshot.metrics.first)
                     .frame(maxWidth: .infinity)
@@ -119,6 +77,8 @@ struct DashboardView: View {
                 }
                 .frame(maxWidth: 520)
             }
+
+            SettingsSectionHeader(icon: "megaphone", title: "Programs")
 
             HStack(spacing: 12) {
                 PromoCard(
@@ -133,6 +93,8 @@ struct DashboardView: View {
                     buttonTitle: "Join"
                 )
             }
+
+            SettingsSectionHeader(icon: "waveform.path.ecg", title: "Operations")
 
             HStack(alignment: .top, spacing: 12) {
                 ActivityPanel(entries: viewModel.snapshot.activities)
@@ -150,6 +112,7 @@ struct DashboardView: View {
                     .frame(width: 280)
             }
 
+            SettingsSectionHeader(icon: "bubble.left.and.bubble.right", title: "Feedback")
             FeedbackPanel()
         }
     }
@@ -157,10 +120,9 @@ struct DashboardView: View {
     private var historyContent: some View {
         let items = Array(historyStore.entries.prefix(60))
 
-        return VStack(alignment: .leading, spacing: 12) {
-            Text("Recent Sessions")
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundStyle(DashboardTheme.primaryText)
+        return VStack(alignment: .leading, spacing: 20) {
+            sectionHeading(for: .history)
+            SettingsSectionHeader(icon: "clock.arrow.circlepath", title: "Recent Sessions")
 
             if items.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
@@ -223,6 +185,38 @@ struct DashboardView: View {
                     )
                 }
             }
+        }
+    }
+
+    private func sectionHeading(for section: DashboardSection) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(section == .home ? "Home" : section.title)
+                    .font(.system(size: 32, weight: .black, design: .rounded))
+                    .foregroundStyle(DashboardTheme.primaryText)
+                Text(section.subtitle)
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(DashboardTheme.subtleText)
+            }
+
+            Spacer()
+
+            Button {
+                refresh(section: section)
+            } label: {
+                Label("Refresh", systemImage: "arrow.clockwise")
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(DashboardTheme.actionTint)
+            .pointerOnHover()
+        }
+    }
+
+    private func refresh(section: DashboardSection) {
+        if section == .history {
+            historyStore.reload()
+        } else {
+            viewModel.refresh(section: section)
         }
     }
 
