@@ -9,6 +9,9 @@ final class OverlayPanelController {
     private lazy var panel: FloatingPanel = makePanel()
     private var keyMonitor: Any?
     private var previousApp: NSRunningApplication?
+    private var panelMoveObserver: NSObjectProtocol?
+    private var isProgrammaticPanelMove = false
+    private var preferredPanelOrigin: NSPoint?
 
     init() {
         viewModel.onRequestClose = { [weak self] in
@@ -16,6 +19,13 @@ final class OverlayPanelController {
         }
         viewModel.onRequestAccept = { [weak self] acceptedText, mode in
             self?.applyOutput(acceptedText, mode: mode)
+        }
+        installPanelMoveObserver()
+    }
+
+    deinit {
+        if let panelMoveObserver {
+            NotificationCenter.default.removeObserver(panelMoveObserver)
         }
     }
 
@@ -36,11 +46,16 @@ final class OverlayPanelController {
         )
 
         let panelSize = panel.frame.size
-        let mouse = NSEvent.mouseLocation
-        let targetOrigin = NSPoint(x: mouse.x + 12, y: mouse.y - panelSize.height - 12)
+        let targetOrigin: NSPoint
+        if let preferredPanelOrigin {
+            targetOrigin = preferredPanelOrigin
+        } else {
+            let mouse = NSEvent.mouseLocation
+            targetOrigin = NSPoint(x: mouse.x + 12, y: mouse.y - panelSize.height - 12)
+        }
         let adjustedOrigin = clampedOrigin(for: targetOrigin, panelSize: panelSize)
 
-        panel.setFrameOrigin(adjustedOrigin)
+        setPanelOrigin(adjustedOrigin)
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         installKeyMonitor()
@@ -67,6 +82,7 @@ final class OverlayPanelController {
         panel.hasShadow = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false
+        panel.isMovableByWindowBackground = true
 
         let content = InlinePromptView(viewModel: viewModel)
             .background(.ultraThinMaterial)
@@ -75,7 +91,7 @@ final class OverlayPanelController {
                 RoundedRectangle(cornerRadius: 12)
                     .strokeBorder(Color.black.opacity(0.12), lineWidth: 1)
             )
-        panel.contentView = NSHostingView(rootView: content)
+        panel.contentView = MovableHostingView(rootView: content)
 
         return panel
     }
@@ -173,6 +189,28 @@ final class OverlayPanelController {
         }
     }
 
+    private func setPanelOrigin(_ origin: NSPoint) {
+        isProgrammaticPanelMove = true
+        panel.setFrameOrigin(origin)
+        isProgrammaticPanelMove = false
+    }
+
+    private func installPanelMoveObserver() {
+        panelMoveObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didMoveNotification,
+            object: panel,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            guard panel.isVisible else { return }
+            guard !isProgrammaticPanelMove else { return }
+            preferredPanelOrigin = clampedOrigin(
+                for: panel.frame.origin,
+                panelSize: panel.frame.size
+            )
+        }
+    }
+
     private func copyToClipboard(_ text: String) {
         guard !text.isEmpty else { return }
         let pasteboard = NSPasteboard.general
@@ -211,6 +249,10 @@ final class OverlayPanelController {
         keyDown.post(tap: .cghidEventTap)
         keyUp.post(tap: .cghidEventTap)
     }
+}
+
+final class MovableHostingView<Content: View>: NSHostingView<Content> {
+    override var mouseDownCanMoveWindow: Bool { true }
 }
 
 final class FloatingPanel: NSPanel {
