@@ -77,6 +77,11 @@ struct InlinePromptView: View {
             HStack(spacing: 6) {
                 Spacer()
 
+                if viewModel.isRunning {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+
                 Menu {
                     Button(viewModel.hasSelectionContext ? "Edit Selection" : "Edit Text") {
                         viewModel.selectedAction = .edit
@@ -124,7 +129,7 @@ struct InlinePromptView: View {
                     .foregroundStyle(.red)
             }
 
-            if !viewModel.outputText.isEmpty {
+            if viewModel.isRunning || !viewModel.outputText.isEmpty {
                 ScrollView {
                     Text(viewModel.outputText)
                         .font(.system(size: outputFontSize, weight: .regular, design: .monospaced))
