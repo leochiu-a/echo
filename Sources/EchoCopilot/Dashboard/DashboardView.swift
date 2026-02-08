@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct DashboardView: View {
@@ -85,6 +86,7 @@ struct DashboardView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(DashboardTheme.actionTint)
+                .pointerOnHover()
             }
         }
         .padding(18)
@@ -276,6 +278,7 @@ private struct TypelessSidebar: View {
             .contentShape(RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
+        .pointerOnHover()
         .onHover { isHovered in
             withAnimation(.easeOut(duration: 0.12)) {
                 hoveredSection = isHovered ? section : nil
@@ -351,6 +354,7 @@ private struct SettingsPanel: View {
                     ensureModelSelectionValid()
                 }
                 .buttonStyle(.plain)
+                .pointerOnHover()
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(Color.white.opacity(0.96))
                 .padding(.horizontal, 22)
@@ -448,6 +452,7 @@ private struct ModelSelectionField: View {
             .contentShape(RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)
+        .pointerOnHover()
         .onHover { hovering in
             withAnimation(.easeOut(duration: 0.12)) {
                 isHovered = hovering
@@ -504,6 +509,7 @@ private struct ShortcutRecorderField: View {
                 .padding(.horizontal, 10)
             }
             .buttonStyle(.plain)
+            .pointerOnHover()
 
             Button {
                 shortcut = defaultShortcut
@@ -514,6 +520,7 @@ private struct ShortcutRecorderField: View {
                     .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
+            .pointerOnHover()
         }
         .padding(.horizontal, 10)
         .frame(width: 390, height: 56)
@@ -608,6 +615,7 @@ private struct FocusMetricCard: View {
                 Button("View Report") {}
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                    .pointerOnHover()
 
                 Spacer(minLength: 0)
 
@@ -700,6 +708,7 @@ private struct PromoCard: View {
             Button(buttonTitle) {}
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .pointerOnHover()
         }
         .padding(18)
         .frame(maxWidth: .infinity, minHeight: 148, alignment: .leading)
@@ -735,6 +744,7 @@ private struct FeedbackPanel: View {
                             .foregroundStyle(DashboardTheme.subtleText.opacity(0.7))
                     }
                     .buttonStyle(.plain)
+                    .pointerOnHover()
                 }
 
                 Text("This area is fake content for now. Later we can bind it to actual prompt output history.")
@@ -1051,6 +1061,35 @@ private struct DashboardSnapshot {
     let services: [DashboardService]
     let workload: [WorkloadPoint]
     let history: [HistoryRecord]
+}
+
+private struct PointerOnHoverModifier: ViewModifier {
+    @State private var isHovering = false
+
+    func body(content: Content) -> some View {
+        content
+            .onHover { hovering in
+                guard hovering != isHovering else { return }
+                isHovering = hovering
+                if hovering {
+                    NSCursor.pointingHand.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+            .onDisappear {
+                if isHovering {
+                    NSCursor.pop()
+                    isHovering = false
+                }
+            }
+    }
+}
+
+private extension View {
+    func pointerOnHover() -> some View {
+        modifier(PointerOnHoverModifier())
+    }
 }
 
 private extension DashboardSnapshot {
