@@ -9,6 +9,37 @@ func composePromptEditWithoutSelectionReturnsTrimmedCommand() {
 }
 
 @Test
+func buildCodexExecArgumentsIncludesModelAndReasoningEffort() {
+    let arguments = buildCodexExecArguments(
+        model: "gpt-5.3-codex",
+        reasoningEffort: "high",
+        outputPath: "/tmp/echo-output.txt"
+    )
+
+    #expect(arguments.contains("--model"))
+    #expect(arguments.contains("gpt-5.3-codex"))
+    #expect(arguments.contains("-c"))
+    #expect(arguments.contains("model_reasoning_effort=\"high\""))
+    #expect(arguments.suffix(2) == ["--output-last-message", "/tmp/echo-output.txt", "-"].suffix(2))
+    #expect(arguments.contains("/tmp/echo-output.txt"))
+}
+
+@Test
+func buildCodexExecArgumentsSkipsEmptyModelAndEffort() {
+    let arguments = buildCodexExecArguments(
+        model: "   ",
+        reasoningEffort: "",
+        outputPath: "/tmp/echo-output.txt"
+    )
+
+    #expect(!arguments.contains("--model"))
+    #expect(!arguments.contains("-c"))
+    #expect(arguments.contains("--output-last-message"))
+    #expect(arguments.contains("/tmp/echo-output.txt"))
+    #expect(arguments.last == "-")
+}
+
+@Test
 func composePromptEditWithSelectionIncludesInstructionAndContext() {
     let prompt = composePrompt(
         command: "shorten",

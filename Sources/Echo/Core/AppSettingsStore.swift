@@ -53,6 +53,9 @@ final class AppSettingsStore: ObservableObject {
     @Published var codexModel: String {
         didSet { persistModelIfNeeded() }
     }
+    @Published var codexReasoningEffort: String {
+        didSet { persistReasoningEffortIfNeeded() }
+    }
     @Published var openPanelShortcut: KeyboardShortcut {
         didSet { persistShortcutIfNeeded(openPanelShortcut, key: StorageKey.openPanelShortcut) }
     }
@@ -67,13 +70,21 @@ final class AppSettingsStore: ObservableObject {
         "gpt-5.3-codex",
         "gpt-5-codex"
     ]
+    static let supportedReasoningEfforts = [
+        "low",
+        "medium",
+        "high",
+        "xhigh"
+    ]
     static let defaultCodexModel = "gpt-5.3-codex"
+    static let defaultCodexReasoningEffort = "medium"
     static let defaultOpenPanelShortcut = KeyboardShortcut(keyCode: UInt16(kVK_ANSI_K), modifiers: [.command])
     static let defaultReplaceShortcut = KeyboardShortcut(keyCode: UInt16(kVK_Return), modifiers: [.command])
     static let defaultInsertShortcut = KeyboardShortcut(keyCode: UInt16(kVK_Return), modifiers: [.command, .shift])
 
     enum StorageKey {
         static let codexModel = "echo.settings.codexModel"
+        static let codexReasoningEffort = "echo.settings.codexReasoningEffort"
         static let openPanelShortcut = "echo.settings.openPanelShortcut"
         static let replaceShortcut = "echo.settings.replaceShortcut"
         static let insertShortcut = "echo.settings.insertShortcut"
@@ -87,6 +98,7 @@ final class AppSettingsStore: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         codexModel = Self.defaultCodexModel
+        codexReasoningEffort = Self.defaultCodexReasoningEffort
         openPanelShortcut = Self.defaultOpenPanelShortcut
         replaceShortcut = Self.defaultReplaceShortcut
         insertShortcut = Self.defaultInsertShortcut
@@ -102,6 +114,17 @@ final class AppSettingsStore: ObservableObject {
                 defaults.set(Self.defaultCodexModel, forKey: StorageKey.codexModel)
             }
         }
+        if let storedEffort = defaults.string(forKey: StorageKey.codexReasoningEffort) {
+            let trimmed = storedEffort.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let canonicalEffort = Self.canonicalReasoningEffort(for: trimmed) {
+                codexReasoningEffort = canonicalEffort
+                if storedEffort != canonicalEffort {
+                    defaults.set(canonicalEffort, forKey: StorageKey.codexReasoningEffort)
+                }
+            } else {
+                defaults.set(Self.defaultCodexReasoningEffort, forKey: StorageKey.codexReasoningEffort)
+            }
+        }
         openPanelShortcut = decodeShortcut(forKey: StorageKey.openPanelShortcut) ?? Self.defaultOpenPanelShortcut
         replaceShortcut = decodeShortcut(forKey: StorageKey.replaceShortcut) ?? Self.defaultReplaceShortcut
         insertShortcut = decodeShortcut(forKey: StorageKey.insertShortcut) ?? Self.defaultInsertShortcut
@@ -111,6 +134,7 @@ final class AppSettingsStore: ObservableObject {
 
     func resetToDefaults() {
         codexModel = Self.defaultCodexModel
+        codexReasoningEffort = Self.defaultCodexReasoningEffort
         openPanelShortcut = Self.defaultOpenPanelShortcut
         replaceShortcut = Self.defaultReplaceShortcut
         insertShortcut = Self.defaultInsertShortcut
@@ -135,10 +159,35 @@ final class AppSettingsStore: ObservableObject {
         NotificationCenter.default.post(name: .appSettingsDidChange, object: nil)
     }
 
+    private func persistReasoningEffortIfNeeded() {
+        guard !isBootstrapping else { return }
+        let trimmed = codexReasoningEffort.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let canonicalEffort = Self.canonicalReasoningEffort(for: trimmed) else {
+            codexReasoningEffort = Self.defaultCodexReasoningEffort
+            defaults.set(Self.defaultCodexReasoningEffort, forKey: StorageKey.codexReasoningEffort)
+            NotificationCenter.default.post(name: .appSettingsDidChange, object: nil)
+            return
+        }
+
+        if codexReasoningEffort != canonicalEffort {
+            codexReasoningEffort = canonicalEffort
+            return
+        }
+
+        defaults.set(canonicalEffort, forKey: StorageKey.codexReasoningEffort)
+        NotificationCenter.default.post(name: .appSettingsDidChange, object: nil)
+    }
+
     static func canonicalModel(for value: String) -> String? {
         let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !normalized.isEmpty else { return nil }
         return supportedCodexModels.first { $0.caseInsensitiveCompare(normalized) == .orderedSame }
+    }
+
+    static func canonicalReasoningEffort(for value: String) -> String? {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !normalized.isEmpty else { return nil }
+        return supportedReasoningEfforts.first { $0.caseInsensitiveCompare(normalized) == .orderedSame }
     }
 
     private func persistShortcutIfNeeded(_ shortcut: KeyboardShortcut, key: String) {

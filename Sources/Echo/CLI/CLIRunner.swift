@@ -58,22 +58,17 @@ final class CLIRunner {
         }
 
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        var arguments = [
-            "codex",
-            "exec",
-            "--skip-git-repo-check",
-            "--color",
-            "never"
-        ]
-
-        let configuredModel = await MainActor.run {
-            AppSettingsStore.shared.codexModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        let (configuredModel, configuredReasoningEffort) = await MainActor.run {
+            (
+                AppSettingsStore.shared.codexModel,
+                AppSettingsStore.shared.codexReasoningEffort
+            )
         }
-        if !configuredModel.isEmpty {
-            arguments.append(contentsOf: ["--model", configuredModel])
-        }
-
-        arguments.append(contentsOf: ["--output-last-message", outputFileURL.path, "-"])
+        let arguments = buildCodexExecArguments(
+            model: configuredModel,
+            reasoningEffort: configuredReasoningEffort,
+            outputPath: outputFileURL.path
+        )
         process.arguments = arguments
         process.environment = enrichedEnvironment()
         process.standardOutput = stdoutWriter
@@ -137,6 +132,33 @@ final class CLIRunner {
             tokenUsage: tokenUsage
         )
     }
+}
+
+func buildCodexExecArguments(
+    model: String,
+    reasoningEffort: String,
+    outputPath: String
+) -> [String] {
+    var arguments = [
+        "codex",
+        "exec",
+        "--skip-git-repo-check",
+        "--color",
+        "never"
+    ]
+
+    let normalizedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !normalizedModel.isEmpty {
+        arguments.append(contentsOf: ["--model", normalizedModel])
+    }
+
+    let normalizedEffort = reasoningEffort.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !normalizedEffort.isEmpty {
+        arguments.append(contentsOf: ["-c", "model_reasoning_effort=\"\(normalizedEffort)\""])
+    }
+
+    arguments.append(contentsOf: ["--output-last-message", outputPath, "-"])
+    return arguments
 }
 
 func enrichedEnvironment() -> [String: String] {

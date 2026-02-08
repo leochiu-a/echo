@@ -18,6 +18,20 @@ func canonicalModelRejectsUnsupportedValue() {
 
 @Test
 @MainActor
+func canonicalReasoningEffortNormalizesCase() {
+    #expect(AppSettingsStore.canonicalReasoningEffort(for: " HIGH ") == "high")
+    #expect(AppSettingsStore.canonicalReasoningEffort(for: "xHiGh") == "xhigh")
+}
+
+@Test
+@MainActor
+func canonicalReasoningEffortRejectsUnsupportedValue() {
+    #expect(AppSettingsStore.canonicalReasoningEffort(for: "max") == nil)
+    #expect(AppSettingsStore.canonicalReasoningEffort(for: "   ") == nil)
+}
+
+@Test
+@MainActor
 func initMigratesLegacyModelValueInDefaults() throws {
     let suiteName = "EchoTests.\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suiteName))
@@ -33,6 +47,21 @@ func initMigratesLegacyModelValueInDefaults() throws {
 
 @Test
 @MainActor
+func initMigratesLegacyReasoningEffortInDefaults() throws {
+    let suiteName = "EchoTests.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    defaults.set("HIGH", forKey: AppSettingsStore.StorageKey.codexReasoningEffort)
+
+    let store = AppSettingsStore(defaults: defaults)
+
+    #expect(store.codexReasoningEffort == "high")
+    #expect(defaults.string(forKey: AppSettingsStore.StorageKey.codexReasoningEffort) == "high")
+}
+
+@Test
+@MainActor
 func settingInvalidModelFallsBackToDefault() throws {
     let suiteName = "EchoTests.\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suiteName))
@@ -43,4 +72,21 @@ func settingInvalidModelFallsBackToDefault() throws {
 
     #expect(store.codexModel == AppSettingsStore.defaultCodexModel)
     #expect(defaults.string(forKey: AppSettingsStore.StorageKey.codexModel) == AppSettingsStore.defaultCodexModel)
+}
+
+@Test
+@MainActor
+func settingInvalidReasoningEffortFallsBackToDefault() throws {
+    let suiteName = "EchoTests.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let store = AppSettingsStore(defaults: defaults)
+    store.codexReasoningEffort = "extreme"
+
+    #expect(store.codexReasoningEffort == AppSettingsStore.defaultCodexReasoningEffort)
+    #expect(
+        defaults.string(forKey: AppSettingsStore.StorageKey.codexReasoningEffort)
+            == AppSettingsStore.defaultCodexReasoningEffort
+    )
 }

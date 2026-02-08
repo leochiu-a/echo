@@ -20,7 +20,7 @@ enum DashboardSection: String, CaseIterable, Identifiable {
         switch self {
         case .home: return "Live token usage summary from your locally stored prompt history."
         case .history: return "Recent prompt runs, with status and timestamps."
-        case .settings: return "Configure model and shortcuts for input, replace, and insert actions."
+        case .settings: return "Configure model, reasoning effort, and shortcuts for input, replace, and insert actions."
         }
     }
 }

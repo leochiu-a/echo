@@ -43,5 +43,5 @@ This watches `Sources/**/*.swift` and `Package.swift`, rebuilds, then restarts t
 The runner invokes:
 
 ```bash
-codex exec --skip-git-repo-check --color never --output-last-message <tmpfile> -
+codex exec --skip-git-repo-check --color never --model <model> -c 'model_reasoning_effort="<effort>"' --output-last-message <tmpfile> -
 ```

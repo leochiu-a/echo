@@ -4,6 +4,7 @@ import SwiftUI
 struct DashboardSettingsSection: View {
     @ObservedObject var settingsStore: AppSettingsStore
     private let modelOptions = AppSettingsStore.supportedCodexModels
+    private let effortOptions = AppSettingsStore.supportedReasoningEfforts
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -47,13 +48,24 @@ struct DashboardSettingsSection: View {
                 title: "Codex Model",
                 description: "Select the execution model (passed to codex exec --model)."
             ) {
-                ModelSelectionField(selection: $settingsStore.codexModel, options: modelOptions)
+                SelectionField(selection: $settingsStore.codexModel, options: modelOptions)
+            }
+
+            SettingsRow(
+                title: "Reasoning Effort",
+                description: "Adjust reasoning depth (passed via codex exec -c model_reasoning_effort)."
+            ) {
+                SelectionField(
+                    selection: $settingsStore.codexReasoningEffort,
+                    options: effortOptions,
+                    displayValue: effortDisplayName
+                )
             }
 
             HStack {
                 Spacer()
                 Button("Save Settings") {
-                    ensureModelSelectionValid()
+                    ensureSelectionsValid()
                 }
                 .buttonStyle(.plain)
                 .pointerOnHover()
@@ -74,34 +86,56 @@ struct DashboardSettingsSection: View {
         }
         .padding(.top, 4)
         .onAppear {
-            ensureModelSelectionValid()
+            ensureSelectionsValid()
         }
     }
 
-    private func ensureModelSelectionValid() {
-        guard modelOptions.contains(settingsStore.codexModel) else {
+    private func ensureSelectionsValid() {
+        if !modelOptions.contains(settingsStore.codexModel) {
             settingsStore.codexModel = AppSettingsStore.defaultCodexModel
-            return
+        }
+        if !effortOptions.contains(settingsStore.codexReasoningEffort) {
+            settingsStore.codexReasoningEffort = AppSettingsStore.defaultCodexReasoningEffort
+        }
+    }
+
+    private func effortDisplayName(_ effort: String) -> String {
+        switch effort {
+        case "xhigh":
+            return "X-High"
+        default:
+            return effort.capitalized
         }
     }
 }
 
-private struct ModelSelectionField: View {
+private struct SelectionField: View {
     @Binding var selection: String
     let options: [String]
+    let displayValue: (String) -> String
 
     @State private var isHovered = false
 
+    init(
+        selection: Binding<String>,
+        options: [String],
+        displayValue: @escaping (String) -> String = { $0 }
+    ) {
+        _selection = selection
+        self.options = options
+        self.displayValue = displayValue
+    }
+
     var body: some View {
         Menu {
-            ForEach(options, id: \.self) { model in
+            ForEach(options, id: \.self) { option in
                 Button {
-                    selection = model
+                    selection = option
                 } label: {
                     HStack {
-                        Text(model)
+                        Text(displayValue(option))
                         Spacer()
-                        if selection == model {
+                        if selection == option {
                             Image(systemName: "checkmark")
                         }
                     }
@@ -109,7 +143,7 @@ private struct ModelSelectionField: View {
             }
         } label: {
             HStack(spacing: 10) {
-                Text(selection)
+                Text(displayValue(selection))
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(DashboardTheme.primaryText)
                 Spacer(minLength: 0)
