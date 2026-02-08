@@ -48,7 +48,7 @@ struct DashboardSettingsSection: View {
 
             SettingsRow(
                 title: "Model",
-                description: "Select GPT or Codex execution model (passed to codex exec --model)."
+                description: "Select GPT or Codex execution model."
             ) {
                 SelectionField(
                     selection: $settingsStore.codexModel,
@@ -59,7 +59,7 @@ struct DashboardSettingsSection: View {
 
             SettingsRow(
                 title: "Reasoning Effort",
-                description: "Adjust reasoning depth (passed via codex exec -c model_reasoning_effort)."
+                description: "Adjust reasoning depth for execution."
             ) {
                 SelectionField(
                     selection: $settingsStore.codexReasoningEffort,

@@ -41,7 +41,7 @@ final class InlinePromptViewModel: ObservableObject {
     var onRequestClose: (() -> Void)?
     var onRequestAccept: ((String, OutputApplyMode) -> Void)?
 
-    private let cliRunner: CLIRunner
+    private let appServerRunner: AppServerRunner
     private let historyStore: PromptHistoryStore
     private let settingsStore: AppSettingsStore
     private var historyIndex: Int?
@@ -51,11 +51,11 @@ final class InlinePromptViewModel: ObservableObject {
     private var suppressHistoryReset = false
 
     init(
-        cliRunner: CLIRunner = CLIRunner(),
+        appServerRunner: AppServerRunner = AppServerRunner(),
         historyStore: PromptHistoryStore? = nil,
         settingsStore: AppSettingsStore? = nil
     ) {
-        self.cliRunner = cliRunner
+        self.appServerRunner = appServerRunner
         self.historyStore = historyStore ?? .shared
         self.settingsStore = settingsStore ?? .shared
 
@@ -121,29 +121,40 @@ final class InlinePromptViewModel: ObservableObject {
                     input: trimmed,
                     commands: settingsStore.availableSlashCommands()
                 )
-                let result = try await cliRunner.run(
+                let result = try await appServerRunner.run(
                     command: resolvedCommand,
                     selectedText: selectedContextText,
                     action: action
-                )
+                ) { [weak self] delta in
+                    await MainActor.run {
+                        guard let self, self.isRunning else { return }
+                        self.outputText.append(delta)
+                    }
+                }
                 guard !Task.isCancelled else { return }
 
                 if result.exitCode == 0 {
-                    outputText = result.stdout
+                    let finalOutput: String
+                    if result.stdout.isEmpty {
+                        finalOutput = outputText
+                    } else {
+                        finalOutput = result.stdout
+                    }
+                    outputText = finalOutput
                     historyStore.recordExecution(
                         command: trimmed,
                         action: action,
                         usedSelectionContext: usesSelectionContext,
                         status: .succeeded,
-                        detail: successDetail(for: result.stdout),
-                        responseText: result.stdout,
+                        detail: successDetail(for: finalOutput),
+                        responseText: finalOutput,
                         inputTokens: result.tokenUsage?.inputTokens,
                         outputTokens: result.tokenUsage?.outputTokens,
                         totalTokens: result.tokenUsage?.totalTokens
                     )
                 } else {
                     let failure = result.stderr.isEmpty
-                        ? "CLI exited with code \(result.exitCode)."
+                        ? "Execution exited with code \(result.exitCode)."
                         : result.stderr
                     errorText = failure
                     historyStore.recordExecution(

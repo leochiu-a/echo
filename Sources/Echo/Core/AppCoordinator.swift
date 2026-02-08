@@ -4,6 +4,7 @@ import AppKit
 final class AppCoordinator {
     private let hotKeyManager = HotKeyManager()
     private let overlayPanelController = OverlayPanelController()
+    private let appServerRunner = AppServerRunner()
     private let settingsStore = AppSettingsStore.shared
     private var dashboardPromptObserver: NSObjectProtocol?
     private var settingsObserver: NSObjectProtocol?
@@ -33,6 +34,10 @@ final class AppCoordinator {
                 guard let self else { return }
                 hotKeyManager.register(shortcut: settingsStore.openPanelShortcut)
             }
+        }
+
+        Task(priority: .utility) { [appServerRunner] in
+            await appServerRunner.prewarm()
         }
     }
 

@@ -28,7 +28,9 @@ This watches `Sources/**/*.swift` and `Package.swift`, rebuilds, then restarts t
 - Press `Cmd+K` from any app to toggle panel.
 - Type a prompt.
 - Type `/` to trigger slash-command autocomplete. Commands are configured in Dashboard `Commands`.
-- Press `Enter` to run Codex (`codex exec`).
+- Press `Enter` to run Codex.
+- Echo runs through Codex App Server and streams output into the panel while generation is in progress.
+- The app prewarms an app-server session on launch and reuses it across requests.
 - If text is selected in the active app when the panel opens, `Run` includes that selected text as context.
 - Use the mode menu (`Edit Selection` / `Ask Question`) to choose rewrite vs Q&A behavior.
 - While running, click `Stop` (or press `Esc`) to cancel the in-flight request.
@@ -41,8 +43,8 @@ This watches `Sources/**/*.swift` and `Package.swift`, rebuilds, then restarts t
 - Complete login first (`codex login`), otherwise Run will fail.
 - Enable Accessibility permission for Echo so selected text can be read across apps.
 
-The runner invokes:
+Execution uses:
 
 ```bash
-codex exec --skip-git-repo-check --color never --model <model> -c 'model_reasoning_effort="<effort>"' --output-last-message <tmpfile> -
+codex app-server
 ```
