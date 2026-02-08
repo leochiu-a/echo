@@ -61,6 +61,9 @@ struct PromptHistoryEntry: Codable, Equatable, Identifiable {
     let status: PromptHistoryStatus
     let detail: String
     let responseText: String?
+    let inputTokens: Int?
+    let outputTokens: Int?
+    let totalTokens: Int?
     let createdAt: Date
 
     init(
@@ -71,6 +74,9 @@ struct PromptHistoryEntry: Codable, Equatable, Identifiable {
         status: PromptHistoryStatus,
         detail: String,
         responseText: String? = nil,
+        inputTokens: Int? = nil,
+        outputTokens: Int? = nil,
+        totalTokens: Int? = nil,
         createdAt: Date = Date()
     ) {
         self.id = id
@@ -80,7 +86,67 @@ struct PromptHistoryEntry: Codable, Equatable, Identifiable {
         self.status = status
         self.detail = detail
         self.responseText = responseText
+        self.inputTokens = inputTokens
+        self.outputTokens = outputTokens
+        self.totalTokens = totalTokens
         self.createdAt = createdAt
+    }
+}
+
+struct PromptHistoryTokenSummary: Equatable {
+    let totalTokens: Int
+    let totalInputTokens: Int
+    let totalOutputTokens: Int
+    let inputTokenRunCount: Int
+    let outputTokenRunCount: Int
+    let tokenizedRunCount: Int
+
+    static let zero = PromptHistoryTokenSummary(
+        totalTokens: 0,
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        inputTokenRunCount: 0,
+        outputTokenRunCount: 0,
+        tokenizedRunCount: 0
+    )
+
+    static func summarize(entries: [PromptHistoryEntry]) -> PromptHistoryTokenSummary {
+        var totalTokens = 0
+        var totalInputTokens = 0
+        var totalOutputTokens = 0
+        var inputTokenRunCount = 0
+        var outputTokenRunCount = 0
+        var tokenizedRunCount = 0
+
+        for entry in entries {
+            let input = max(0, entry.inputTokens ?? 0)
+            let output = max(0, entry.outputTokens ?? 0)
+            let recordedTotal = max(0, entry.totalTokens ?? 0)
+            let fallbackTotal = input + output
+            let effectiveTotal = recordedTotal > 0 ? recordedTotal : fallbackTotal
+
+            if input > 0 {
+                totalInputTokens += input
+                inputTokenRunCount += 1
+            }
+            if output > 0 {
+                totalOutputTokens += output
+                outputTokenRunCount += 1
+            }
+            if effectiveTotal > 0 {
+                totalTokens += effectiveTotal
+                tokenizedRunCount += 1
+            }
+        }
+
+        return PromptHistoryTokenSummary(
+            totalTokens: totalTokens,
+            totalInputTokens: totalInputTokens,
+            totalOutputTokens: totalOutputTokens,
+            inputTokenRunCount: inputTokenRunCount,
+            outputTokenRunCount: outputTokenRunCount,
+            tokenizedRunCount: tokenizedRunCount
+        )
     }
 }
 
@@ -92,6 +158,10 @@ final class PromptHistoryStore: ObservableObject {
     @Published private(set) var commands: [String] = []
     @Published var retentionPolicy: PromptHistoryRetentionPolicy {
         didSet { persistRetentionPolicyIfNeeded() }
+    }
+
+    var tokenSummary: PromptHistoryTokenSummary {
+        PromptHistoryTokenSummary.summarize(entries: entries)
     }
 
     private let defaults: UserDefaults
@@ -161,6 +231,9 @@ final class PromptHistoryStore: ObservableObject {
         status: PromptHistoryStatus,
         detail: String,
         responseText: String? = nil,
+        inputTokens: Int? = nil,
+        outputTokens: Int? = nil,
+        totalTokens: Int? = nil,
         createdAt: Date = Date()
     ) {
         let trimmedCommand = command.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -170,6 +243,13 @@ final class PromptHistoryStore: ObservableObject {
 
         let normalizedDetail = detail.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedResponse = normalizedResponseText(responseText)
+        let normalizedInputTokens = normalizedTokenCount(inputTokens)
+        let normalizedOutputTokens = normalizedTokenCount(outputTokens)
+        let normalizedTotalTokens = normalizedTokenCount(totalTokens)
+            ?? {
+                let computed = (normalizedInputTokens ?? 0) + (normalizedOutputTokens ?? 0)
+                return computed > 0 ? computed : nil
+            }()
         let entry = PromptHistoryEntry(
             command: trimmedCommand,
             action: action,
@@ -177,6 +257,9 @@ final class PromptHistoryStore: ObservableObject {
             status: status,
             detail: normalizedDetail.isEmpty ? status.label : normalizedDetail,
             responseText: normalizedResponse,
+            inputTokens: normalizedInputTokens,
+            outputTokens: normalizedOutputTokens,
+            totalTokens: normalizedTotalTokens,
             createdAt: createdAt
         )
 
@@ -223,6 +306,11 @@ final class PromptHistoryStore: ObservableObject {
         }
         let prefix = String(trimmed.prefix(7_997))
         return "\(prefix)..."
+    }
+
+    private func normalizedTokenCount(_ value: Int?) -> Int? {
+        guard let value, value > 0 else { return nil }
+        return value
     }
 
     private func persistRetentionPolicyIfNeeded() {

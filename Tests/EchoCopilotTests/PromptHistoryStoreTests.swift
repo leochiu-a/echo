@@ -226,3 +226,79 @@ func retentionPolicyPersistsAcrossStoreReload() throws {
 
     #expect(reader.retentionPolicy == .thirtyDays)
 }
+
+@Test
+@MainActor
+func recordExecutionStoresTokenUsageFields() throws {
+    let suiteName = "EchoCopilotTests.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let store = PromptHistoryStore(
+        defaults: defaults,
+        storageNamespace: suiteName,
+        maxEntries: 10,
+        maxCommands: 10
+    )
+
+    store.recordExecution(
+        command: "token test",
+        action: .edit,
+        usedSelectionContext: false,
+        status: .succeeded,
+        detail: "ok",
+        responseText: "done",
+        inputTokens: 120,
+        outputTokens: 80,
+        totalTokens: 200
+    )
+
+    let entry = try #require(store.entries.first)
+    #expect(entry.inputTokens == 120)
+    #expect(entry.outputTokens == 80)
+    #expect(entry.totalTokens == 200)
+}
+
+@Test
+func tokenSummaryAggregatesRunsAndFallbackTotals() {
+    let entries = [
+        PromptHistoryEntry(
+            command: "a",
+            action: .edit,
+            usedSelectionContext: false,
+            status: .succeeded,
+            detail: "ok",
+            inputTokens: 100,
+            outputTokens: 40,
+            totalTokens: 140
+        ),
+        PromptHistoryEntry(
+            command: "b",
+            action: .askQuestion,
+            usedSelectionContext: false,
+            status: .failed,
+            detail: "failed",
+            inputTokens: 50,
+            outputTokens: nil,
+            totalTokens: nil
+        ),
+        PromptHistoryEntry(
+            command: "c",
+            action: .askQuestion,
+            usedSelectionContext: false,
+            status: .succeeded,
+            detail: "ok",
+            inputTokens: nil,
+            outputTokens: 30,
+            totalTokens: nil
+        )
+    ]
+
+    let summary = PromptHistoryTokenSummary.summarize(entries: entries)
+    #expect(summary.totalInputTokens == 150)
+    #expect(summary.totalOutputTokens == 70)
+    #expect(summary.totalTokens == 220)
+    #expect(summary.inputTokenRunCount == 2)
+    #expect(summary.outputTokenRunCount == 2)
+    #expect(summary.tokenizedRunCount == 3)
+}

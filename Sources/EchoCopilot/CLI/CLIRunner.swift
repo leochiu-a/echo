@@ -4,6 +4,13 @@ struct CLIRunnerResult {
     let stdout: String
     let stderr: String
     let exitCode: Int32
+    let tokenUsage: CLITokenUsage?
+}
+
+struct CLITokenUsage: Equatable {
+    let inputTokens: Int?
+    let outputTokens: Int?
+    let totalTokens: Int?
 }
 
 enum CLIRunnerError: LocalizedError {
@@ -105,12 +112,11 @@ final class CLIRunner {
         let outputFromFile = normalizeOutput(
             (try? String(contentsOf: outputFileURL, encoding: .utf8)) ?? ""
         )
-        let outputFromStdout = normalizeOutput(
-            (try? String(contentsOf: stdoutFileURL, encoding: .utf8)) ?? ""
-        )
-        let stderr = normalizeOutput(
-            (try? String(contentsOf: stderrFileURL, encoding: .utf8)) ?? ""
-        )
+        let rawStdout = (try? String(contentsOf: stdoutFileURL, encoding: .utf8)) ?? ""
+        let rawStderr = (try? String(contentsOf: stderrFileURL, encoding: .utf8)) ?? ""
+        let outputFromStdout = normalizeOutput(rawStdout)
+        let stderr = normalizeOutput(rawStderr)
+        let tokenUsage = parseCLITokenUsage(from: "\(rawStdout)\n\(rawStderr)")
         let stdout = outputFromFile.isEmpty ? outputFromStdout : outputFromFile
         let exitCode = process.terminationStatus
 
@@ -119,14 +125,16 @@ final class CLIRunner {
             return CLIRunnerResult(
                 stdout: stdout,
                 stderr: "codex exec failed (exit \(exitCode)). PATH=\(pathInfo)",
-                exitCode: exitCode
+                exitCode: exitCode,
+                tokenUsage: tokenUsage
             )
         }
 
         return CLIRunnerResult(
             stdout: stdout,
             stderr: stderr,
-            exitCode: exitCode
+            exitCode: exitCode,
+            tokenUsage: tokenUsage
         )
     }
 }
@@ -163,6 +171,73 @@ func cleanupTempFiles(_ urls: [URL]) {
     for url in urls {
         try? FileManager.default.removeItem(at: url)
     }
+}
+
+func parseCLITokenUsage(from rawLog: String) -> CLITokenUsage? {
+    let text = normalizeOutput(rawLog)
+    guard !text.isEmpty else { return nil }
+
+    let inputTokens = firstCapturedTokenCount(
+        in: text,
+        patterns: [
+            #"(?im)\binput\s*tokens?\b\s*[:=]\s*([0-9][0-9,_]*)"#,
+            #"(?im)\bprompt\s*tokens?\b\s*[:=]\s*([0-9][0-9,_]*)"#,
+            #"(?im)\binput\b\s*[:=]\s*([0-9][0-9,_]*)"#
+        ]
+    )
+    let outputTokens = firstCapturedTokenCount(
+        in: text,
+        patterns: [
+            #"(?im)\boutput\s*tokens?\b\s*[:=]\s*([0-9][0-9,_]*)"#,
+            #"(?im)\bcompletion\s*tokens?\b\s*[:=]\s*([0-9][0-9,_]*)"#,
+            #"(?im)\boutput\b\s*[:=]\s*([0-9][0-9,_]*)"#
+        ]
+    )
+
+    var totalTokens = firstCapturedTokenCount(
+        in: text,
+        patterns: [
+            #"(?im)\btotal\s*tokens?\b\s*[:=]\s*([0-9][0-9,_]*)"#,
+            #"(?im)\btokens?\s*used\b\s*[:=]?\s*([0-9][0-9,_]*)"#
+        ]
+    )
+
+    if totalTokens == nil {
+        let computed = (inputTokens ?? 0) + (outputTokens ?? 0)
+        totalTokens = computed > 0 ? computed : nil
+    }
+
+    guard inputTokens != nil || outputTokens != nil || totalTokens != nil else {
+        return nil
+    }
+
+    return CLITokenUsage(
+        inputTokens: inputTokens,
+        outputTokens: outputTokens,
+        totalTokens: totalTokens
+    )
+}
+
+private func firstCapturedTokenCount(in text: String, patterns: [String]) -> Int? {
+    for pattern in patterns {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { continue }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let match = regex.firstMatch(in: text, options: [], range: range), match.numberOfRanges >= 2 else {
+            continue
+        }
+        let captureRange = match.range(at: 1)
+        guard let swiftRange = Range(captureRange, in: text) else { continue }
+        if let value = parseTokenCountNumber(String(text[swiftRange])) {
+            return value
+        }
+    }
+    return nil
+}
+
+private func parseTokenCountNumber(_ rawValue: String) -> Int? {
+    let normalized = rawValue.filter(\.isNumber)
+    guard !normalized.isEmpty else { return nil }
+    return Int(normalized)
 }
 
 func composePrompt(command: String, selectedText: String?, action: CopilotAction) -> String {

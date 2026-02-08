@@ -2,9 +2,9 @@ import AppKit
 import SwiftUI
 
 struct DashboardView: View {
-    @StateObject private var viewModel = DashboardViewModel()
     @StateObject private var settingsStore = AppSettingsStore.shared
     @StateObject private var historyStore = PromptHistoryStore.shared
+    @StateObject private var codexUsageViewModel = CodexMonthlyUsageViewModel()
     @State private var isVisible = false
     @State private var selectedSection: DashboardSection = .home
     @State private var showClearHistoryConfirmation = false
@@ -51,13 +51,15 @@ struct DashboardView: View {
         }
         .frame(minWidth: 1220, minHeight: 760)
         .onAppear {
-            viewModel.apply(section: selectedSection)
+            codexUsageViewModel.refresh()
             withAnimation(.easeOut(duration: 0.45)) {
                 isVisible = true
             }
         }
         .onChange(of: selectedSection) { newValue in
-            viewModel.apply(section: newValue)
+            if newValue == .home, codexUsageViewModel.monthlyUsages.isEmpty {
+                codexUsageViewModel.refresh()
+            }
         }
     }
 
@@ -68,53 +70,19 @@ struct DashboardView: View {
             SettingsSectionHeader(icon: "chart.bar.xaxis", title: "Overview")
 
             HStack(alignment: .top, spacing: 12) {
-                FocusMetricCard(metric: viewModel.snapshot.metrics.first)
+                FocusMetricCard(metric: homeMetrics.first)
                     .frame(maxWidth: .infinity)
 
                 LazyVGrid(columns: metricColumns, spacing: 12) {
-                    ForEach(Array(viewModel.snapshot.metrics.dropFirst().prefix(4))) { metric in
+                    ForEach(Array(homeMetrics.dropFirst().prefix(4))) { metric in
                         StatTile(metric: metric)
                     }
                 }
                 .frame(maxWidth: 520)
             }
 
-            SettingsSectionHeader(icon: "megaphone", title: "Programs")
-
-            HStack(spacing: 12) {
-                PromoCard(
-                    title: "Refer Friends",
-                    detail: "Fake campaign card for UI preview. Replace with real referral data later.",
-                    buttonTitle: "Invite"
-                )
-
-                PromoCard(
-                    title: "Partner Program",
-                    detail: "Fake partnership block for layout testing. Wire real backend event later.",
-                    buttonTitle: "Join"
-                )
-            }
-
-            SettingsSectionHeader(icon: "waveform.path.ecg", title: "Operations")
-
-            HStack(alignment: .top, spacing: 12) {
-                ActivityPanel(entries: viewModel.snapshot.activities)
-                ServicePanel(services: viewModel.snapshot.services)
-                UtilizationPanel(points: viewModel.snapshot.workload)
-                    .padding(14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(DashboardTheme.cardBackground)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .strokeBorder(DashboardTheme.cardBorder, lineWidth: 1)
-                            )
-                    )
-                    .frame(width: 280)
-            }
-
-            SettingsSectionHeader(icon: "bubble.left.and.bubble.right", title: "Feedback")
-            FeedbackPanel()
+            SettingsSectionHeader(icon: "calendar", title: "Codex Monthly Usage")
+            codexMonthlyUsagePanel
         }
     }
 
@@ -320,6 +288,153 @@ struct DashboardView: View {
         .buttonStyle(.plain)
         .pointerOnHover()
     }
+
+    private var homeMetrics: [DashboardMetric] {
+        let summary = historyStore.tokenSummary
+        return [
+            DashboardMetric(
+                title: "Total Tokens",
+                icon: "sum",
+                value: formattedTokenCount(summary.totalTokens),
+                trend: "All recorded token usage",
+                isTrendPositive: true
+            ),
+            DashboardMetric(
+                title: "Input Tokens",
+                icon: "tray.and.arrow.down",
+                value: formattedTokenCount(summary.totalInputTokens),
+                trend: "Prompt/input token total",
+                isTrendPositive: true
+            ),
+            DashboardMetric(
+                title: "Output Tokens",
+                icon: "tray.and.arrow.up",
+                value: formattedTokenCount(summary.totalOutputTokens),
+                trend: "Completion/output token total",
+                isTrendPositive: true
+            )
+        ]
+    }
+
+    private var codexMonthlyUsagePanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
+                if let totalCostUSD = codexUsageViewModel.totalCostUSD {
+                    Text("Total Cost USD \(formattedUSDCost(totalCostUSD))")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(DashboardTheme.primaryText)
+                }
+                Spacer()
+                if let updatedAt = codexUsageViewModel.lastUpdatedAt {
+                    Text("Updated \(Self.codexUsageUpdateTimeFormatter.string(from: updatedAt))")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(DashboardTheme.subtleText)
+                }
+                Button {
+                    codexUsageViewModel.refresh()
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(codexUsageViewModel.isLoading)
+                .pointerOnHover()
+            }
+
+            if codexUsageViewModel.isLoading && codexUsageViewModel.monthlyUsages.isEmpty {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Loading monthly Codex usage...")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(DashboardTheme.subtleText)
+                }
+                .padding(.vertical, 6)
+            } else if let error = codexUsageViewModel.errorText {
+                Text(error)
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(DashboardTheme.warnTint)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if codexUsageViewModel.monthlyUsages.isEmpty {
+                Text("No monthly usage data.")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(DashboardTheme.subtleText)
+            } else {
+                ForEach(codexUsageViewModel.monthlyUsages) { usage in
+                    HStack(alignment: .center, spacing: 12) {
+                        Text(usage.month)
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundStyle(DashboardTheme.primaryText)
+                            .frame(width: 98, alignment: .leading)
+
+                        HStack(spacing: 14) {
+                            codexUsageMetricLabel(title: "Total", value: formattedTokenCount(usage.totalTokens))
+                            codexUsageMetricLabel(title: "Input", value: formattedTokenCount(usage.inputTokens))
+                            codexUsageMetricLabel(title: "Output", value: formattedTokenCount(usage.outputTokens))
+                            if let costUSD = usage.costUSD {
+                                codexUsageMetricLabel(title: "Cost USD", value: formattedUSDCost(costUSD))
+                            }
+                        }
+
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(DashboardTheme.cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .strokeBorder(DashboardTheme.cardBorder, lineWidth: 1)
+                )
+        )
+    }
+
+    private func codexUsageMetricLabel(title: String, value: String) -> some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundStyle(DashboardTheme.subtleText)
+            Text(value)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(DashboardTheme.primaryText)
+        }
+    }
+
+    private func formattedTokenCount(_ value: Int) -> String {
+        Self.tokenCountFormatter.string(from: NSNumber(value: value)) ?? "\(value)"
+    }
+
+    private static let tokenCountFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 0
+        return formatter
+    }()
+
+    private func formattedUSDCost(_ value: Double) -> String {
+        Self.usdCurrencyFormatter.string(from: NSNumber(value: value)) ?? String(format: "$%.2f", value)
+    }
+
+    private static let usdCurrencyFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return formatter
+    }()
+
+    private static let codexUsageUpdateTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter
+    }()
 
     private func sectionHeading(for section: DashboardSection) -> some View {
         HStack(alignment: .top, spacing: 14) {
@@ -823,18 +938,13 @@ private struct FocusMetricCard: View {
                     .font(.system(size: 44, weight: .heavy, design: .rounded))
                     .foregroundStyle(DashboardTheme.primaryText)
 
-                Text("Preview Data")
+                Text(metric?.trend ?? "No token usage found yet.")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(DashboardTheme.subtleText)
 
-                Button("View Report") {}
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .pointerOnHover()
-
                 Spacer(minLength: 0)
 
-                Label("This dashboard is currently using fake data.", systemImage: "lock")
+                Label("Computed from locally stored history.", systemImage: "internaldrive")
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundStyle(DashboardTheme.subtleText)
             }
@@ -905,227 +1015,155 @@ private struct StatTile: View {
     }
 }
 
-private struct PromoCard: View {
-    let title: String
-    let detail: String
-    let buttonTitle: String
+@MainActor
+private final class CodexMonthlyUsageViewModel: ObservableObject {
+    @Published private(set) var monthlyUsages: [CodexMonthlyUsage] = []
+    @Published private(set) var isLoading = false
+    @Published private(set) var errorText: String?
+    @Published private(set) var lastUpdatedAt: Date?
+    @Published private(set) var totalCostUSD: Double?
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .foregroundStyle(DashboardTheme.primaryText)
+    private var runningTask: Task<Void, Never>?
 
-            Text(detail)
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(DashboardTheme.subtleText)
+    deinit {
+        runningTask?.cancel()
+    }
 
-            Button(buttonTitle) {}
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .pointerOnHover()
+    func refresh() {
+        guard !isLoading else { return }
+        isLoading = true
+        errorText = nil
+
+        runningTask?.cancel()
+        runningTask = Task { [weak self] in
+            guard let self else { return }
+            defer {
+                isLoading = false
+                runningTask = nil
+            }
+
+            do {
+                let report = try await fetchCodexMonthlyUsageReport()
+                guard !Task.isCancelled else { return }
+                monthlyUsages = report.monthly
+                totalCostUSD = report.totals?.costUSD
+                lastUpdatedAt = Date()
+            } catch is CancellationError {
+                return
+            } catch {
+                errorText = summarizeCodexUsageError(error)
+            }
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, minHeight: 148, alignment: .leading)
-        .background(
-            LinearGradient(
-                colors: [Color.white.opacity(0.66), DashboardTheme.accentA.opacity(0.16), DashboardTheme.accentB.opacity(0.12)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: 16)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Color.white.opacity(0.45), lineWidth: 1)
-        )
     }
 }
 
-private struct FeedbackPanel: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Feedback")
-                .font(.system(size: 34, weight: .bold, design: .rounded))
-                .foregroundStyle(DashboardTheme.primaryText)
+private struct CodexMonthlyUsage: Codable, Equatable, Identifiable {
+    let month: String
+    let inputTokens: Int
+    let outputTokens: Int
+    let totalTokens: Int
+    let costUSD: Double?
 
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Latest Draft")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    Spacer()
-                    Button {} label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(DashboardTheme.subtleText.opacity(0.7))
-                    }
-                    .buttonStyle(.plain)
-                    .pointerOnHover()
-                }
+    var id: String { month }
+}
 
-                Text("This area is fake content for now. Later we can bind it to actual prompt output history.")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(DashboardTheme.subtleText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.white.opacity(0.7))
-                    )
-            }
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(DashboardTheme.cardBackground)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .strokeBorder(DashboardTheme.cardBorder, lineWidth: 1)
-                    )
+private struct CodexMonthlyUsageTotals: Codable, Equatable {
+    let costUSD: Double?
+}
+
+private struct CodexMonthlyUsageReport: Codable, Equatable {
+    let monthly: [CodexMonthlyUsage]
+    let totals: CodexMonthlyUsageTotals?
+}
+
+private func fetchCodexMonthlyUsageReport(timeout: TimeInterval = 35) async throws -> CodexMonthlyUsageReport {
+    let process = Process()
+    let stdoutPipe = Pipe()
+    let stderrPipe = Pipe()
+
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+    process.arguments = [
+        "npx",
+        "--yes",
+        "@ccusage/codex@latest",
+        "monthly",
+        "--json"
+    ]
+    process.environment = enrichedEnvironment()
+    process.standardOutput = stdoutPipe
+    process.standardError = stderrPipe
+
+    do {
+        try process.run()
+    } catch {
+        throw NSError(
+            domain: "CodexMonthlyUsage",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "Failed to run npx: \(error.localizedDescription)"]
+        )
+    }
+
+    let deadline = Date().addingTimeInterval(timeout)
+    while process.isRunning {
+        if Task.isCancelled {
+            process.terminate()
+            throw CancellationError()
+        }
+        if Date() >= deadline {
+            process.terminate()
+            throw NSError(
+                domain: "CodexMonthlyUsage",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Loading Codex usage timed out."]
             )
         }
+        try await Task.sleep(nanoseconds: 50_000_000)
     }
-}
 
-private struct ActivityPanel: View {
-    let entries: [DashboardActivity]
+    let stdout = String(data: stdoutPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+    let stderr = String(data: stderrPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+    let normalizedStdout = normalizeOutput(stdout)
+    let normalizedStderr = normalizeOutput(stderr)
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Recent Activity")
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(DashboardTheme.primaryText)
+    guard process.terminationStatus == 0 else {
+        let detail = normalizedStderr.isEmpty
+            ? "npx command failed with exit code \(process.terminationStatus)."
+            : normalizedStderr
+        throw NSError(
+            domain: "CodexMonthlyUsage",
+            code: Int(process.terminationStatus),
+            userInfo: [NSLocalizedDescriptionKey: detail]
+        )
+    }
 
-            ForEach(entries) { entry in
-                HStack(spacing: 11) {
-                    Circle()
-                        .fill(entry.status.tint)
-                        .frame(width: 9, height: 9)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(entry.title)
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                        Text(entry.timestamp)
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundStyle(DashboardTheme.subtleText)
-                    }
-                    Spacer()
-                }
-                .padding(.vertical, 4)
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(DashboardTheme.cardBackground)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .strokeBorder(DashboardTheme.cardBorder, lineWidth: 1)
-                )
+    guard let data = normalizedStdout.data(using: .utf8), !data.isEmpty else {
+        throw NSError(
+            domain: "CodexMonthlyUsage",
+            code: 3,
+            userInfo: [NSLocalizedDescriptionKey: "No JSON output from Codex usage command."]
+        )
+    }
+
+    do {
+        return try JSONDecoder().decode(CodexMonthlyUsageReport.self, from: data)
+    } catch {
+        throw NSError(
+            domain: "CodexMonthlyUsage",
+            code: 4,
+            userInfo: [NSLocalizedDescriptionKey: "Unable to parse Codex usage JSON."]
         )
     }
 }
 
-private struct ServicePanel: View {
-    let services: [DashboardService]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Service Health")
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(DashboardTheme.primaryText)
-
-            ForEach(services) { service in
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack {
-                        Text(service.name)
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        Spacer()
-                        Text(service.status.label)
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(service.status.tint.opacity(0.14), in: Capsule())
-                            .foregroundStyle(service.status.tint)
-                    }
-                    ProgressView(value: service.level)
-                        .tint(service.status.tint)
-                    Text(service.note)
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundStyle(DashboardTheme.subtleText)
-                }
-                .padding(.vertical, 2)
-            }
-        }
-        .padding(14)
-        .frame(width: 300)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(DashboardTheme.cardBackground)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .strokeBorder(DashboardTheme.cardBorder, lineWidth: 1)
-                )
-        )
+private func summarizeCodexUsageError(_ error: Error) -> String {
+    let message = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+    if message.isEmpty {
+        return "Failed to load Codex monthly usage."
     }
-}
-
-private struct UtilizationPanel: View {
-    let points: [WorkloadPoint]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Pipeline Utilization")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(DashboardTheme.primaryText)
-
-            ForEach(points) { point in
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text(point.label)
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundStyle(DashboardTheme.subtleText)
-                        Spacer()
-                        Text("\(Int(point.value * 100))%")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundStyle(DashboardTheme.primaryText)
-                    }
-                    GeometryReader { proxy in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 5)
-                                .fill(Color.white.opacity(0.45))
-                            RoundedRectangle(cornerRadius: 5)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [DashboardTheme.accentA, DashboardTheme.accentB],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .frame(width: proxy.size.width * point.value)
-                        }
-                    }
-                    .frame(height: 9)
-                }
-            }
-        }
+    if message.count <= 180 {
+        return message
     }
-}
-
-@MainActor
-private final class DashboardViewModel: ObservableObject {
-    @Published private(set) var snapshot = DashboardSnapshot.homeLibrary.first ?? .placeholder
-
-    private var homeIndex = 0
-
-    func apply(section: DashboardSection) {
-        switch section {
-        case .home:
-            snapshot = DashboardSnapshot.homeLibrary[homeIndex]
-        case .history:
-            break
-        case .settings:
-            break
-        }
-    }
+    return "\(message.prefix(177))..."
 }
 
 private enum DashboardSection: String, CaseIterable, Identifiable {
@@ -1145,7 +1183,7 @@ private enum DashboardSection: String, CaseIterable, Identifiable {
 
     var subtitle: String {
         switch self {
-        case .home: return "Fake dashboard data for layout and interaction preview."
+        case .home: return "Live token usage summary from your locally stored prompt history."
         case .history: return "Recent prompt runs, with status and timestamps."
         case .settings: return "Configure model and shortcuts for input, replace, and insert actions."
         }
@@ -1191,79 +1229,6 @@ private struct DashboardMetric: Identifiable {
     var id: String { title }
 }
 
-private enum ActivityStatus {
-    case success
-    case running
-    case warning
-
-    var tint: Color {
-        switch self {
-        case .success: return DashboardTheme.goodTint
-        case .running: return DashboardTheme.actionTint
-        case .warning: return DashboardTheme.warnTint
-        }
-    }
-}
-
-private struct DashboardActivity: Identifiable {
-    let id = UUID()
-    let title: String
-    let timestamp: String
-    let status: ActivityStatus
-}
-
-private enum ServiceStatus {
-    case healthy
-    case warning
-    case unstable
-
-    var label: String {
-        switch self {
-        case .healthy: return "Healthy"
-        case .warning: return "Monitor"
-        case .unstable: return "Unstable"
-        }
-    }
-
-    var tint: Color {
-        switch self {
-        case .healthy: return DashboardTheme.goodTint
-        case .warning: return DashboardTheme.accentB
-        case .unstable: return DashboardTheme.warnTint
-        }
-    }
-}
-
-private struct DashboardService: Identifiable {
-    let id = UUID()
-    let name: String
-    let level: Double
-    let status: ServiceStatus
-    let note: String
-}
-
-private struct WorkloadPoint: Identifiable {
-    let id = UUID()
-    let label: String
-    let value: Double
-}
-
-private struct HistoryRecord: Identifiable {
-    let id = UUID()
-    let title: String
-    let detail: String
-    let time: String
-    let statusTint: Color
-}
-
-private struct DashboardSnapshot {
-    let metrics: [DashboardMetric]
-    let activities: [DashboardActivity]
-    let services: [DashboardService]
-    let workload: [WorkloadPoint]
-    let history: [HistoryRecord]
-}
-
 private struct PointerOnHoverModifier: ViewModifier {
     @State private var isHovering = false
 
@@ -1291,92 +1256,4 @@ private extension View {
     func pointerOnHover() -> some View {
         modifier(PointerOnHoverModifier())
     }
-}
-
-private extension DashboardSnapshot {
-    static let placeholder = DashboardSnapshot(metrics: [], activities: [], services: [], workload: [], history: [])
-
-    static let homeLibrary: [DashboardSnapshot] = [
-        DashboardSnapshot(
-            metrics: [
-                DashboardMetric(title: "Personalization", icon: "scribble.variable", value: "10.7%", trend: "+1.8%", isTrendPositive: true),
-                DashboardMetric(title: "Total Dictation", icon: "clock", value: "1h 21m", trend: "+11m", isTrendPositive: true),
-                DashboardMetric(title: "Total Words", icon: "mic", value: "7.5K", trend: "+0.9K", isTrendPositive: true),
-                DashboardMetric(title: "Saved Time", icon: "hourglass", value: "3h 18m", trend: "+26m", isTrendPositive: true),
-                DashboardMetric(title: "Avg WPM", icon: "bolt", value: "138", trend: "-4", isTrendPositive: false)
-            ],
-            activities: [
-                DashboardActivity(title: "Mock rewrite applied in notes", timestamp: "2 min ago", status: .success),
-                DashboardActivity(title: "Mock question mode run", timestamp: "6 min ago", status: .running),
-                DashboardActivity(title: "Mock clipboard retry", timestamp: "17 min ago", status: .warning),
-                DashboardActivity(title: "Mock prompt accepted", timestamp: "27 min ago", status: .success)
-            ],
-            services: [
-                DashboardService(name: "Prompt Runner", level: 0.9, status: .healthy, note: "Fake health for UI preview"),
-                DashboardService(name: "Accessibility Bridge", level: 0.74, status: .warning, note: "Fake warning for layout state"),
-                DashboardService(name: "Overlay Renderer", level: 0.95, status: .healthy, note: "Fake stable indicator")
-            ],
-            workload: [
-                WorkloadPoint(label: "Rewrite", value: 0.68),
-                WorkloadPoint(label: "Q&A", value: 0.57),
-                WorkloadPoint(label: "Clipboard", value: 0.31),
-                WorkloadPoint(label: "Background", value: 0.46)
-            ],
-            history: []
-        ),
-        DashboardSnapshot(
-            metrics: [
-                DashboardMetric(title: "Personalization", icon: "scribble.variable", value: "12.3%", trend: "+1.1%", isTrendPositive: true),
-                DashboardMetric(title: "Total Dictation", icon: "clock", value: "1h 34m", trend: "+13m", isTrendPositive: true),
-                DashboardMetric(title: "Total Words", icon: "mic", value: "8.1K", trend: "+0.6K", isTrendPositive: true),
-                DashboardMetric(title: "Saved Time", icon: "hourglass", value: "3h 05m", trend: "-13m", isTrendPositive: false),
-                DashboardMetric(title: "Avg WPM", icon: "bolt", value: "146", trend: "+8", isTrendPositive: true)
-            ],
-            activities: [
-                DashboardActivity(title: "Mock focused profile enabled", timestamp: "just now", status: .running),
-                DashboardActivity(title: "Mock draft inserted to editor", timestamp: "4 min ago", status: .success),
-                DashboardActivity(title: "Mock permission lag event", timestamp: "14 min ago", status: .warning),
-                DashboardActivity(title: "Mock question mode copied", timestamp: "21 min ago", status: .success)
-            ],
-            services: [
-                DashboardService(name: "Prompt Runner", level: 0.82, status: .warning, note: "Fake queue pressure"),
-                DashboardService(name: "Accessibility Bridge", level: 0.68, status: .unstable, note: "Fake unstable condition"),
-                DashboardService(name: "Overlay Renderer", level: 0.92, status: .healthy, note: "Fake smooth rendering")
-            ],
-            workload: [
-                WorkloadPoint(label: "Rewrite", value: 0.73),
-                WorkloadPoint(label: "Q&A", value: 0.52),
-                WorkloadPoint(label: "Clipboard", value: 0.4),
-                WorkloadPoint(label: "Background", value: 0.55)
-            ],
-            history: []
-        )
-    ]
-
-    static let historyLibrary: [DashboardSnapshot] = [
-        DashboardSnapshot(
-            metrics: homeLibrary[0].metrics,
-            activities: homeLibrary[0].activities,
-            services: homeLibrary[0].services,
-            workload: homeLibrary[0].workload,
-            history: [
-                HistoryRecord(title: "Edit selection", detail: "Mock output inserted in Xcode.", time: "10:42", statusTint: DashboardTheme.goodTint),
-                HistoryRecord(title: "Ask question", detail: "Mock answer copied to clipboard.", time: "10:31", statusTint: DashboardTheme.actionTint),
-                HistoryRecord(title: "Rewrite paragraph", detail: "Mock run stopped by user.", time: "10:09", statusTint: DashboardTheme.warnTint),
-                HistoryRecord(title: "Prompt retry", detail: "Mock second attempt succeeded.", time: "09:58", statusTint: DashboardTheme.goodTint)
-            ]
-        ),
-        DashboardSnapshot(
-            metrics: homeLibrary[1].metrics,
-            activities: homeLibrary[1].activities,
-            services: homeLibrary[1].services,
-            workload: homeLibrary[1].workload,
-            history: [
-                HistoryRecord(title: "Prompt from dashboard", detail: "Mock inline panel opened.", time: "11:12", statusTint: DashboardTheme.actionTint),
-                HistoryRecord(title: "Replace output", detail: "Mock replacement sent to active app.", time: "10:56", statusTint: DashboardTheme.goodTint),
-                HistoryRecord(title: "Fallback mode", detail: "Mock fallback path used once.", time: "10:21", statusTint: DashboardTheme.warnTint),
-                HistoryRecord(title: "History up/down", detail: "Mock command recall interaction.", time: "09:40", statusTint: DashboardTheme.goodTint)
-            ]
-        )
-    ]
 }

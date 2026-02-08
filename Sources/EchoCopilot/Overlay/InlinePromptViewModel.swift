@@ -97,7 +97,10 @@ final class InlinePromptViewModel: ObservableObject {
                         usedSelectionContext: usesSelectionContext,
                         status: .succeeded,
                         detail: successDetail(for: result.stdout),
-                        responseText: result.stdout
+                        responseText: result.stdout,
+                        inputTokens: result.tokenUsage?.inputTokens,
+                        outputTokens: result.tokenUsage?.outputTokens,
+                        totalTokens: result.tokenUsage?.totalTokens
                     )
                 } else {
                     let failure = result.stderr.isEmpty
@@ -110,7 +113,10 @@ final class InlinePromptViewModel: ObservableObject {
                         usedSelectionContext: usesSelectionContext,
                         status: .failed,
                         detail: summarizedFailureDetail(from: failure),
-                        responseText: nil
+                        responseText: nil,
+                        inputTokens: result.tokenUsage?.inputTokens,
+                        outputTokens: result.tokenUsage?.outputTokens,
+                        totalTokens: result.tokenUsage?.totalTokens
                     )
                 }
             } catch is CancellationError {

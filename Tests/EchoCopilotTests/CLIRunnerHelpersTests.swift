@@ -73,3 +73,29 @@ func cleanupTempFilesRemovesFiles() throws {
     #expect(!FileManager.default.fileExists(atPath: fileA.path))
     #expect(!FileManager.default.fileExists(atPath: fileB.path))
 }
+
+@Test
+func parseCLITokenUsageReadsInputOutputAndTotalFields() {
+    let usage = parseCLITokenUsage(from: """
+    model: gpt-5.3-codex
+    input tokens: 1,234
+    output tokens: 56
+    total tokens: 1,290
+    """)
+
+    #expect(usage?.inputTokens == 1_234)
+    #expect(usage?.outputTokens == 56)
+    #expect(usage?.totalTokens == 1_290)
+}
+
+@Test
+func parseCLITokenUsageFallsBackToTokensUsedLine() {
+    let usage = parseCLITokenUsage(from: """
+    tokens used
+    789
+    """)
+
+    #expect(usage?.inputTokens == nil)
+    #expect(usage?.outputTokens == nil)
+    #expect(usage?.totalTokens == 789)
+}
