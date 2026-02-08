@@ -27,6 +27,7 @@ This watches `Sources/**/*.swift` and `Package.swift`, rebuilds, then restarts t
 
 - Press `Cmd+K` from any app to toggle panel.
 - Type a prompt.
+- Type `/` to trigger slash-command autocomplete. Commands are configured in Dashboard `Commands`.
 - Press `Enter` to run Codex (`codex exec`).
 - If text is selected in the active app when the panel opens, `Run` includes that selected text as context.
 - Use the mode menu (`Edit Selection` / `Ask Question`) to choose rewrite vs Q&A behavior.

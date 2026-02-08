@@ -6,9 +6,26 @@ enum OutputApplyMode {
     case insert
 }
 
+struct SlashCommandAutocompleteSuggestion: Identifiable, Equatable {
+    let id: UUID
+    let command: String
+    let prompt: String
+
+    var promptPreview: String {
+        let singleLine = prompt.replacingOccurrences(of: "\n", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if singleLine.count <= 96 {
+            return singleLine
+        }
+        return "\(singleLine.prefix(93))..."
+    }
+}
+
 @MainActor
 final class InlinePromptViewModel: ObservableObject {
-    @Published var commandText = ""
+    @Published var commandText = "" {
+        didSet { handleCommandTextChanged() }
+    }
     @Published var outputText = ""
     @Published var isRunning = false
     @Published var errorText: String?
@@ -18,22 +35,35 @@ final class InlinePromptViewModel: ObservableObject {
     @Published var selectedAction: CopilotAction = .edit
     @Published var focusRequestID = UUID()
     @Published var isComposingInput = false
+    @Published private(set) var slashSuggestions: [SlashCommandAutocompleteSuggestion] = []
+    @Published private(set) var highlightedSlashSuggestionIndex = 0
 
     var onRequestClose: (() -> Void)?
     var onRequestAccept: ((String, OutputApplyMode) -> Void)?
 
     private let cliRunner: CLIRunner
     private let historyStore: PromptHistoryStore
+    private let settingsStore: AppSettingsStore
     private var historyIndex: Int?
     private var runningTask: Task<Void, Never>?
     private var selectedContextText: String?
+    private var cancellables = Set<AnyCancellable>()
+    private var suppressHistoryReset = false
 
     init(
         cliRunner: CLIRunner = CLIRunner(),
-        historyStore: PromptHistoryStore? = nil
+        historyStore: PromptHistoryStore? = nil,
+        settingsStore: AppSettingsStore? = nil
     ) {
         self.cliRunner = cliRunner
         self.historyStore = historyStore ?? .shared
+        self.settingsStore = settingsStore ?? .shared
+
+        self.settingsStore.$slashCommands
+            .sink { [weak self] _ in
+                self?.refreshSlashAutocomplete()
+            }
+            .store(in: &cancellables)
     }
 
     var actionLabel: String {
@@ -42,6 +72,10 @@ final class InlinePromptViewModel: ObservableObject {
 
     var canShowApplyButtons: Bool {
         hasEditableSelection && !outputText.isEmpty
+    }
+
+    var isShowingSlashAutocomplete: Bool {
+        !slashSuggestions.isEmpty
     }
 
     deinit {
@@ -63,6 +97,7 @@ final class InlinePromptViewModel: ObservableObject {
         } else {
             selectedContextInfo = nil
         }
+        refreshSlashAutocomplete()
     }
 
     func execute() {
@@ -82,8 +117,12 @@ final class InlinePromptViewModel: ObservableObject {
         runningTask = Task { [weak self] in
             guard let self else { return }
             do {
+                let resolvedCommand = resolveSlashCommandPrompt(
+                    input: trimmed,
+                    commands: settingsStore.availableSlashCommands()
+                )
                 let result = try await cliRunner.run(
-                    command: trimmed,
+                    command: resolvedCommand,
                     selectedText: selectedContextText,
                     action: action
                 )
@@ -183,7 +222,7 @@ final class InlinePromptViewModel: ObservableObject {
             self.historyIndex = history.count - 1
         }
         if let historyIndex {
-            commandText = history[historyIndex]
+            setCommandTextWithoutResettingHistory(history[historyIndex])
         }
     }
 
@@ -193,11 +232,44 @@ final class InlinePromptViewModel: ObservableObject {
         let next = historyIndex + 1
         if next >= history.count {
             self.historyIndex = nil
-            commandText = ""
+            setCommandTextWithoutResettingHistory("")
             return
         }
         self.historyIndex = next
-        commandText = history[next]
+        setCommandTextWithoutResettingHistory(history[next])
+    }
+
+    func moveSlashSelectionUp() -> Bool {
+        guard !slashSuggestions.isEmpty else { return false }
+        let count = slashSuggestions.count
+        highlightedSlashSuggestionIndex = (highlightedSlashSuggestionIndex - 1 + count) % count
+        return true
+    }
+
+    func moveSlashSelectionDown() -> Bool {
+        guard !slashSuggestions.isEmpty else { return false }
+        let count = slashSuggestions.count
+        highlightedSlashSuggestionIndex = (highlightedSlashSuggestionIndex + 1) % count
+        return true
+    }
+
+    func selectSlashSuggestion(at index: Int) {
+        guard slashSuggestions.indices.contains(index) else { return }
+        highlightedSlashSuggestionIndex = index
+        _ = applyHighlightedSlashSuggestion()
+    }
+
+    func highlightSlashSuggestion(at index: Int) {
+        guard slashSuggestions.indices.contains(index) else { return }
+        highlightedSlashSuggestionIndex = index
+    }
+
+    func applyHighlightedSlashSuggestion() -> Bool {
+        guard slashSuggestions.indices.contains(highlightedSlashSuggestionIndex) else { return false }
+        guard let context = slashAutocompleteContext(in: commandText) else { return false }
+        let suggestion = slashSuggestions[highlightedSlashSuggestionIndex]
+        commandText = "\(context.leadingWhitespace)/\(suggestion.command) "
+        return true
     }
 
     private func successDetail(for output: String) -> String {
@@ -211,6 +283,123 @@ final class InlinePromptViewModel: ObservableObject {
     private func summarizedFailureDetail(from rawMessage: String) -> String {
         summarizeCLIErrorMessage(rawMessage)
     }
+
+    private func handleCommandTextChanged() {
+        if !suppressHistoryReset {
+            historyIndex = nil
+        }
+        refreshSlashAutocomplete()
+    }
+
+    private func setCommandTextWithoutResettingHistory(_ value: String) {
+        suppressHistoryReset = true
+        commandText = value
+        suppressHistoryReset = false
+    }
+
+    private func refreshSlashAutocomplete() {
+        guard let context = slashAutocompleteContext(in: commandText) else {
+            slashSuggestions = []
+            highlightedSlashSuggestionIndex = 0
+            return
+        }
+
+        let query = context.query.lowercased()
+        let commands = settingsStore.availableSlashCommands()
+            .filter { query.isEmpty || $0.command.hasPrefix(query) }
+            .sorted { $0.command.localizedCaseInsensitiveCompare($1.command) == .orderedAscending }
+            .prefix(8)
+
+        let mapped = commands.map {
+            SlashCommandAutocompleteSuggestion(id: $0.id, command: $0.command, prompt: $0.prompt)
+        }
+        slashSuggestions = Array(mapped)
+
+        if slashSuggestions.isEmpty {
+            highlightedSlashSuggestionIndex = 0
+            return
+        }
+
+        if highlightedSlashSuggestionIndex >= slashSuggestions.count {
+            highlightedSlashSuggestionIndex = slashSuggestions.count - 1
+        }
+    }
+}
+
+private struct SlashAutocompleteContext {
+    let leadingWhitespace: String
+    let query: String
+}
+
+private func slashAutocompleteContext(in text: String) -> SlashAutocompleteContext? {
+    let leadingWhitespaceSlice = text.prefix { $0.isWhitespace || $0.isNewline }
+    let leadingWhitespace = String(leadingWhitespaceSlice)
+    guard leadingWhitespaceSlice.endIndex < text.endIndex else { return nil }
+    let firstIndex = leadingWhitespaceSlice.endIndex
+    guard text[firstIndex] == "/" else { return nil }
+
+    let afterSlashIndex = text.index(after: firstIndex)
+    guard afterSlashIndex <= text.endIndex else { return nil }
+    let tail = text[afterSlashIndex...]
+
+    if tail.contains(where: { $0.isWhitespace || $0.isNewline }) {
+        return nil
+    }
+
+    return SlashAutocompleteContext(
+        leadingWhitespace: leadingWhitespace,
+        query: String(tail)
+    )
+}
+
+func resolveSlashCommandPrompt(input: String, commands: [SlashCommandSetting]) -> String {
+    let trimmedInput = input.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmedInput.isEmpty else { return trimmedInput }
+
+    guard trimmedInput.first == "/" else { return trimmedInput }
+    guard let separatorIndex = trimmedInput.firstIndex(where: { $0.isWhitespace || $0.isNewline }) else {
+        let token = String(trimmedInput.dropFirst())
+        return expandedPromptIfCommandMatches(
+            token: token,
+            remainder: "",
+            commands: commands,
+            fallback: trimmedInput
+        )
+    }
+
+    let tokenRange = trimmedInput.index(after: trimmedInput.startIndex)..<separatorIndex
+    let token = String(trimmedInput[tokenRange])
+    let remainder = String(trimmedInput[separatorIndex...]).trimmingCharacters(in: .whitespacesAndNewlines)
+    return expandedPromptIfCommandMatches(
+        token: token,
+        remainder: remainder,
+        commands: commands,
+        fallback: trimmedInput
+    )
+}
+
+private func expandedPromptIfCommandMatches(
+    token: String,
+    remainder: String,
+    commands: [SlashCommandSetting],
+    fallback: String
+) -> String {
+    guard let normalizedToken = AppSettingsStore.normalizedSlashCommandName(for: token) else {
+        return fallback
+    }
+    guard let matched = commands.first(where: { $0.command == normalizedToken }) else {
+        return fallback
+    }
+
+    let prompt = matched.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !prompt.isEmpty else { return fallback }
+
+    if prompt.contains("{{input}}") {
+        return prompt.replacingOccurrences(of: "{{input}}", with: remainder)
+    }
+
+    guard !remainder.isEmpty else { return prompt }
+    return "\(prompt)\n\n\(remainder)"
 }
 
 func summarizeCLIErrorMessage(_ rawMessage: String) -> String {

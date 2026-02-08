@@ -156,3 +156,43 @@ func executeWithBlankCommandDoesNotStartRunning() {
 
     #expect(!viewModel.isRunning)
 }
+
+@Test
+func resolveSlashCommandPromptKeepsOriginalWhenCommandNotFound() {
+    let output = resolveSlashCommandPrompt(
+        input: "/unknown please rewrite this",
+        commands: [SlashCommandSetting(command: "reply", prompt: "Prompt body")]
+    )
+
+    #expect(output == "/unknown please rewrite this")
+}
+
+@Test
+func resolveSlashCommandPromptReplacesInputPlaceholder() {
+    let output = resolveSlashCommandPrompt(
+        input: "/reply Thanks for your message",
+        commands: [
+            SlashCommandSetting(
+                command: "reply",
+                prompt: "Draft a concise email reply:\n\n{{input}}"
+            )
+        ]
+    )
+
+    #expect(output == "Draft a concise email reply:\n\nThanks for your message")
+}
+
+@Test
+func resolveSlashCommandPromptAppendsRemainderWhenNoPlaceholder() {
+    let output = resolveSlashCommandPrompt(
+        input: "/summarize The quarterly report focuses on margin gains.",
+        commands: [
+            SlashCommandSetting(
+                command: "summarize",
+                prompt: "Summarize the following text in 3 bullets."
+            )
+        ]
+    )
+
+    #expect(output == "Summarize the following text in 3 bullets.\n\nThe quarterly report focuses on margin gains.")
+}

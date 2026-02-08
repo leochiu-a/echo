@@ -126,13 +126,29 @@ final class OverlayPanelController {
                 }
                 return nil
             case 126: // Up
+                if viewModel.moveSlashSelectionUp() {
+                    return nil
+                }
                 viewModel.historyUp()
                 return nil
             case 125: // Down
+                if viewModel.moveSlashSelectionDown() {
+                    return nil
+                }
                 viewModel.historyDown()
                 return nil
+            case 48: // Tab
+                if event.modifierFlags.normalizedShortcutModifiers.isEmpty,
+                   viewModel.applyHighlightedSlashSuggestion()
+                {
+                    return nil
+                }
+                return event
             case 36: // Return
                 if event.modifierFlags.normalizedShortcutModifiers.isEmpty {
+                    if viewModel.applyHighlightedSlashSuggestion() {
+                        return nil
+                    }
                     viewModel.execute()
                     return nil
                 }

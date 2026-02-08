@@ -46,6 +46,18 @@ struct KeyboardShortcut: Codable, Equatable, Hashable {
     }
 }
 
+struct SlashCommandSetting: Codable, Equatable, Hashable, Identifiable {
+    var id: UUID
+    var command: String
+    var prompt: String
+
+    init(id: UUID = UUID(), command: String, prompt: String) {
+        self.id = id
+        self.command = command
+        self.prompt = prompt
+    }
+}
+
 @MainActor
 final class AppSettingsStore: ObservableObject {
     static let shared = AppSettingsStore()
@@ -65,6 +77,9 @@ final class AppSettingsStore: ObservableObject {
     @Published var insertShortcut: KeyboardShortcut {
         didSet { persistShortcutIfNeeded(insertShortcut, key: StorageKey.insertShortcut) }
     }
+    @Published var slashCommands: [SlashCommandSetting] {
+        didSet { persistSlashCommandsIfNeeded() }
+    }
 
     static let supportedCodexModels = [
         "gpt-5.3-codex",
@@ -81,6 +96,7 @@ final class AppSettingsStore: ObservableObject {
     static let defaultOpenPanelShortcut = KeyboardShortcut(keyCode: UInt16(kVK_ANSI_K), modifiers: [.command])
     static let defaultReplaceShortcut = KeyboardShortcut(keyCode: UInt16(kVK_Return), modifiers: [.command])
     static let defaultInsertShortcut = KeyboardShortcut(keyCode: UInt16(kVK_Return), modifiers: [.command, .shift])
+    static let defaultSlashCommands: [SlashCommandSetting] = []
 
     enum StorageKey {
         static let codexModel = "echo.settings.codexModel"
@@ -88,6 +104,7 @@ final class AppSettingsStore: ObservableObject {
         static let openPanelShortcut = "echo.settings.openPanelShortcut"
         static let replaceShortcut = "echo.settings.replaceShortcut"
         static let insertShortcut = "echo.settings.insertShortcut"
+        static let slashCommands = "echo.settings.slashCommands"
     }
 
     private let defaults: UserDefaults
@@ -102,6 +119,7 @@ final class AppSettingsStore: ObservableObject {
         openPanelShortcut = Self.defaultOpenPanelShortcut
         replaceShortcut = Self.defaultReplaceShortcut
         insertShortcut = Self.defaultInsertShortcut
+        slashCommands = Self.defaultSlashCommands
 
         if let storedModel = defaults.string(forKey: StorageKey.codexModel) {
             let trimmed = storedModel.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -128,6 +146,7 @@ final class AppSettingsStore: ObservableObject {
         openPanelShortcut = decodeShortcut(forKey: StorageKey.openPanelShortcut) ?? Self.defaultOpenPanelShortcut
         replaceShortcut = decodeShortcut(forKey: StorageKey.replaceShortcut) ?? Self.defaultReplaceShortcut
         insertShortcut = decodeShortcut(forKey: StorageKey.insertShortcut) ?? Self.defaultInsertShortcut
+        slashCommands = decodeSlashCommands(forKey: StorageKey.slashCommands) ?? Self.defaultSlashCommands
 
         isBootstrapping = false
     }
@@ -138,6 +157,7 @@ final class AppSettingsStore: ObservableObject {
         openPanelShortcut = Self.defaultOpenPanelShortcut
         replaceShortcut = Self.defaultReplaceShortcut
         insertShortcut = Self.defaultInsertShortcut
+        slashCommands = Self.defaultSlashCommands
     }
 
     private func persistModelIfNeeded() {
@@ -190,9 +210,50 @@ final class AppSettingsStore: ObservableObject {
         return supportedReasoningEfforts.first { $0.caseInsensitiveCompare(normalized) == .orderedSame }
     }
 
+    nonisolated static func normalizedSlashCommandName(for value: String) -> String? {
+        var normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        while normalized.hasPrefix("/") {
+            normalized.removeFirst()
+        }
+        guard !normalized.isEmpty else { return nil }
+        guard normalized.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }) else {
+            return nil
+        }
+        return normalized
+    }
+
+    func availableSlashCommands() -> [SlashCommandSetting] {
+        var seen = Set<String>()
+        var resolved: [SlashCommandSetting] = []
+
+        for item in slashCommands {
+            guard let normalizedCommand = Self.normalizedSlashCommandName(for: item.command) else { continue }
+            let trimmedPrompt = item.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedPrompt.isEmpty else { continue }
+            guard !seen.contains(normalizedCommand) else { continue }
+            seen.insert(normalizedCommand)
+            resolved.append(
+                SlashCommandSetting(
+                    id: item.id,
+                    command: normalizedCommand,
+                    prompt: trimmedPrompt
+                )
+            )
+        }
+
+        return resolved
+    }
+
     private func persistShortcutIfNeeded(_ shortcut: KeyboardShortcut, key: String) {
         guard !isBootstrapping else { return }
         encode(shortcut, forKey: key)
+        NotificationCenter.default.post(name: .appSettingsDidChange, object: nil)
+    }
+
+    private func persistSlashCommandsIfNeeded() {
+        guard !isBootstrapping else { return }
+        guard let data = try? encoder.encode(slashCommands) else { return }
+        defaults.set(data, forKey: StorageKey.slashCommands)
         NotificationCenter.default.post(name: .appSettingsDidChange, object: nil)
     }
 
@@ -204,6 +265,11 @@ final class AppSettingsStore: ObservableObject {
     private func decodeShortcut(forKey key: String) -> KeyboardShortcut? {
         guard let data = defaults.data(forKey: key) else { return nil }
         return try? decoder.decode(KeyboardShortcut.self, from: data)
+    }
+
+    private func decodeSlashCommands(forKey key: String) -> [SlashCommandSetting]? {
+        guard let data = defaults.data(forKey: key) else { return nil }
+        return try? decoder.decode([SlashCommandSetting].self, from: data)
     }
 }
 

@@ -4,6 +4,7 @@ import SwiftUI
 enum DashboardSection: String, CaseIterable, Identifiable {
     case home
     case history
+    case commands
     case settings
 
     var id: String { rawValue }
@@ -12,6 +13,7 @@ enum DashboardSection: String, CaseIterable, Identifiable {
         switch self {
         case .home: return "Speak naturally, write perfectly"
         case .history: return "History records"
+        case .commands: return "Command dashboardview"
         case .settings: return "Settings"
         }
     }
@@ -20,6 +22,7 @@ enum DashboardSection: String, CaseIterable, Identifiable {
         switch self {
         case .home: return "Live token usage summary from your locally stored prompt history."
         case .history: return "Recent prompt runs, with status and timestamps."
+        case .commands: return "Configure slash commands and prompt templates for inline input autocomplete."
         case .settings: return "Configure model, reasoning effort, and shortcuts for input, replace, and insert actions."
         }
     }

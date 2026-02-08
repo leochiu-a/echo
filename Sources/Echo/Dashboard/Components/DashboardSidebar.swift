@@ -21,6 +21,7 @@ struct TypelessSidebar: View {
             VStack(spacing: 8) {
                 navButton(section: .home, icon: "house", title: "Home")
                 navButton(section: .history, icon: "clock.arrow.circlepath", title: "History")
+                navButton(section: .commands, icon: "slash.circle", title: "Commands")
                 navButton(section: .settings, icon: "gearshape", title: "Settings")
             }
 

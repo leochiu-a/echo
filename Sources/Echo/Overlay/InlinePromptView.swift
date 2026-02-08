@@ -64,6 +64,16 @@ struct InlinePromptView: View {
                 .buttonStyle(.plain)
             }
 
+            if viewModel.isShowingSlashAutocomplete {
+                SlashAutocompleteMenu(
+                    suggestions: viewModel.slashSuggestions,
+                    highlightedIndex: viewModel.highlightedSlashSuggestionIndex,
+                    onHover: viewModel.highlightSlashSuggestion(at:),
+                    onSelect: viewModel.selectSlashSuggestion(at:)
+                )
+                .padding(.trailing, 24)
+            }
+
             HStack(spacing: 6) {
                 Spacer()
 
@@ -205,5 +215,68 @@ struct InlinePromptView: View {
             attributes: attributes
         )
         return ceil(rect.height)
+    }
+}
+
+private struct SlashAutocompleteMenu: View {
+    let suggestions: [SlashCommandAutocompleteSuggestion]
+    let highlightedIndex: Int
+    let onHover: (Int) -> Void
+    let onSelect: (Int) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(suggestions.enumerated()), id: \.element.id) { index, suggestion in
+                Button {
+                    onSelect(index)
+                } label: {
+                    HStack(alignment: .top, spacing: 10) {
+                        Text("/\(suggestion.command)")
+                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .foregroundStyle(Color(nsColor: .labelColor))
+                            .frame(width: 140, alignment: .leading)
+
+                        Text(suggestion.promptPreview)
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(
+                                index == highlightedIndex
+                                    ? Color.primary.opacity(0.12)
+                                    : Color.clear
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .strokeBorder(
+                                        index == highlightedIndex
+                                            ? Color.primary.opacity(0.12)
+                                            : Color.clear,
+                                        lineWidth: 1
+                                    )
+                            )
+                    )
+                }
+                .buttonStyle(.plain)
+                .onHover { hovered in
+                    guard hovered else { return }
+                    onHover(index)
+                }
+            }
+        }
+        .padding(6)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(nsColor: .windowBackgroundColor).opacity(0.95))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(Color.black.opacity(0.12), lineWidth: 1)
+                )
+        )
+        .shadow(color: Color.black.opacity(0.13), radius: 8, x: 0, y: 4)
     }
 }

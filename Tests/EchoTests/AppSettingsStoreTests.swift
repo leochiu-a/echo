@@ -90,3 +90,41 @@ func settingInvalidReasoningEffortFallsBackToDefault() throws {
             == AppSettingsStore.defaultCodexReasoningEffort
     )
 }
+
+@Test
+@MainActor
+func normalizedSlashCommandNameAcceptsValidFormats() {
+    #expect(AppSettingsStore.normalizedSlashCommandName(for: " /Reply-Now ") == "reply-now")
+    #expect(AppSettingsStore.normalizedSlashCommandName(for: "__draft123") == "__draft123")
+}
+
+@Test
+@MainActor
+func normalizedSlashCommandNameRejectsInvalidFormats() {
+    #expect(AppSettingsStore.normalizedSlashCommandName(for: " ") == nil)
+    #expect(AppSettingsStore.normalizedSlashCommandName(for: "my cmd") == nil)
+    #expect(AppSettingsStore.normalizedSlashCommandName(for: "reply!") == nil)
+}
+
+@Test
+@MainActor
+func availableSlashCommandsFiltersInvalidAndDuplicateEntries() throws {
+    let suiteName = "EchoTests.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let store = AppSettingsStore(defaults: defaults)
+    store.slashCommands = [
+        SlashCommandSetting(command: "Reply", prompt: "first prompt"),
+        SlashCommandSetting(command: "/reply", prompt: "duplicate should drop"),
+        SlashCommandSetting(command: "bad command", prompt: "invalid name"),
+        SlashCommandSetting(command: "empty-prompt", prompt: "   "),
+        SlashCommandSetting(command: "summarize", prompt: " summarize this ")
+    ]
+
+    let commands = store.availableSlashCommands()
+
+    #expect(commands.map(\.command) == ["reply", "summarize"])
+    #expect(commands[0].prompt == "first prompt")
+    #expect(commands[1].prompt == "summarize this")
+}

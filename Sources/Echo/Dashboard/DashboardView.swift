@@ -28,6 +28,8 @@ struct DashboardView: View {
                             )
                         case .history:
                             DashboardHistorySection(historyStore: historyStore)
+                        case .commands:
+                            DashboardCommandSection(settingsStore: settingsStore)
                         case .settings:
                             DashboardSettingsSection(settingsStore: settingsStore)
                         }
