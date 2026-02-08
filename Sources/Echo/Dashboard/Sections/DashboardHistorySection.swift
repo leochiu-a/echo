@@ -3,6 +3,7 @@ import SwiftUI
 struct DashboardHistorySection: View {
     @ObservedObject var historyStore: PromptHistoryStore
     @State private var showClearHistoryConfirmation = false
+    @State private var selectedResponseEntry: PromptHistoryEntry?
 
     var body: some View {
         let items = Array(historyStore.entries.prefix(60))
@@ -60,20 +61,27 @@ struct DashboardHistorySection: View {
                                 .foregroundStyle(DashboardTheme.subtleText)
                                 .lineLimit(2)
                             if let responsePreview = historyResponsePreview(for: item) {
-                                Text(responsePreview)
-                                    .font(.system(size: 12, weight: .regular, design: .monospaced))
-                                    .foregroundStyle(DashboardTheme.primaryText.opacity(0.9))
-                                    .lineLimit(4)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 8)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(Color.white.opacity(0.62))
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 8)
-                                                    .strokeBorder(Color.black.opacity(0.06), lineWidth: 1)
-                                            )
-                                    )
+                                Button {
+                                    selectedResponseEntry = item
+                                } label: {
+                                    Text(responsePreview)
+                                        .font(.system(size: 12, weight: .regular, design: .monospaced))
+                                        .foregroundStyle(DashboardTheme.primaryText.opacity(0.9))
+                                        .lineLimit(4)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.white.opacity(0.62))
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 8)
+                                                        .strokeBorder(Color.black.opacity(0.06), lineWidth: 1)
+                                                )
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                                .pointerOnHover()
                             }
                         }
 
@@ -83,6 +91,19 @@ struct DashboardHistorySection: View {
                             Text(formattedHistoryTime(item.createdAt))
                                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                                 .foregroundStyle(DashboardTheme.subtleText)
+
+                            if historyResponseText(for: item) != nil {
+                                Button {
+                                    selectedResponseEntry = item
+                                } label: {
+                                    Image(systemName: "doc.text.magnifyingglass")
+                                        .font(.system(size: 12, weight: .semibold))
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(DashboardTheme.subtleText)
+                                .help("View full response")
+                                .pointerOnHover()
+                            }
 
                             Button(role: .destructive) {
                                 historyStore.deleteEntry(id: item.id)
@@ -106,6 +127,13 @@ struct DashboardHistorySection: View {
                     )
                 }
             }
+        }
+        .sheet(item: $selectedResponseEntry) { item in
+            HistoryResponseSheet(
+                command: item.command,
+                createdAt: item.createdAt,
+                responseText: historyResponseText(for: item) ?? "No response text."
+            )
         }
     }
 
@@ -217,14 +245,19 @@ struct DashboardHistorySection: View {
     }
 
     private func historyResponsePreview(for item: PromptHistoryEntry) -> String? {
-        guard item.status == .succeeded else { return nil }
-        guard let response = item.responseText?.trimmingCharacters(in: .whitespacesAndNewlines), !response.isEmpty else {
-            return nil
-        }
+        guard let response = historyResponseText(for: item) else { return nil }
         if response.count <= 360 {
             return response
         }
         return "\(response.prefix(357))..."
+    }
+
+    private func historyResponseText(for item: PromptHistoryEntry) -> String? {
+        guard item.status == .succeeded else { return nil }
+        guard let response = item.responseText?.trimmingCharacters(in: .whitespacesAndNewlines), !response.isEmpty else {
+            return nil
+        }
+        return response
     }
 
     private func tint(for status: PromptHistoryStatus) -> Color {
@@ -255,6 +288,73 @@ struct DashboardHistorySection: View {
     private static let olderHistoryFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter
+    }()
+}
+
+private struct HistoryResponseSheet: View {
+    let command: String
+    let createdAt: Date
+    let responseText: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Full Response")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                    Text(command)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(DashboardTheme.subtleText)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Text(timestamp(createdAt))
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(DashboardTheme.subtleText)
+            }
+
+            ScrollView {
+                Text(responseText)
+                    .font(.system(size: 12, weight: .regular, design: .monospaced))
+                    .foregroundStyle(DashboardTheme.primaryText)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.white.opacity(0.72))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
+                    )
+            )
+
+            HStack {
+                Spacer()
+                Button("Close") {
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(DashboardTheme.actionTint)
+            }
+        }
+        .padding(16)
+        .frame(minWidth: 720, minHeight: 460)
+    }
+
+    private func timestamp(_ date: Date) -> String {
+        Self.formatter.string(from: date)
+    }
+
+    private static let formatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter
     }()
