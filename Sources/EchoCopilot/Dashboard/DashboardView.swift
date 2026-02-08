@@ -4,6 +4,7 @@ import SwiftUI
 struct DashboardView: View {
     @StateObject private var viewModel = DashboardViewModel()
     @StateObject private var settingsStore = AppSettingsStore.shared
+    @StateObject private var historyStore = PromptHistoryStore.shared
     @State private var isVisible = false
     @State private var selectedSection: DashboardSection = .home
 
@@ -71,6 +72,7 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text(selectedSection.title)
                     .font(.system(size: titleFontSize, weight: .bold, design: .rounded))
+                    .foregroundStyle(DashboardTheme.primaryText)
                 Text(selectedSection.subtitle)
                     .font(.system(size: subtitleFontSize, weight: .medium, design: .rounded))
                     .foregroundStyle(DashboardTheme.subtleText)
@@ -80,7 +82,11 @@ struct DashboardView: View {
 
             if selectedSection != .settings {
                 Button {
-                    viewModel.refresh(section: selectedSection)
+                    if selectedSection == .history {
+                        historyStore.reload()
+                    } else {
+                        viewModel.refresh(section: selectedSection)
+                    }
                 } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
@@ -149,44 +155,113 @@ struct DashboardView: View {
     }
 
     private var historyContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let items = Array(historyStore.entries.prefix(60))
+
+        return VStack(alignment: .leading, spacing: 12) {
             Text("Recent Sessions")
                 .font(.system(size: 20, weight: .bold, design: .rounded))
                 .foregroundStyle(DashboardTheme.primaryText)
 
-            ForEach(viewModel.snapshot.history) { item in
-                HStack(spacing: 12) {
-                    Circle()
-                        .fill(item.statusTint)
-                        .frame(width: 10, height: 10)
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(item.title)
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(DashboardTheme.primaryText)
-                        Text(item.detail)
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundStyle(DashboardTheme.subtleText)
-                    }
-
-                    Spacer()
-
-                    Text(item.time)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+            if items.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("No history yet")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(DashboardTheme.primaryText)
+                    Text("Run a prompt from the inline panel and completed sessions will appear here.")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(DashboardTheme.subtleText)
+                    Button {
+                        NotificationCenter.default.post(name: .dashboardRequestOpenPrompt, object: nil)
+                    } label: {
+                        Label("Open Prompt Panel", systemImage: "command.circle")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(DashboardTheme.actionTint)
+                    .pointerOnHover()
                 }
-                .padding(12)
+                .padding(14)
                 .background(
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: 14)
                         .fill(DashboardTheme.cardBackground)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12)
+                            RoundedRectangle(cornerRadius: 14)
                                 .strokeBorder(DashboardTheme.cardBorder, lineWidth: 1)
                         )
                 )
+            } else {
+                ForEach(items) { item in
+                    HStack(spacing: 12) {
+                        Circle()
+                            .fill(tint(for: item.status))
+                            .frame(width: 10, height: 10)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(item.command)
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundStyle(DashboardTheme.primaryText)
+                                .lineLimit(1)
+                            Text(historyDetail(for: item))
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .foregroundStyle(DashboardTheme.subtleText)
+                                .lineLimit(2)
+                        }
+
+                        Spacer()
+
+                        Text(formattedHistoryTime(item.createdAt))
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(DashboardTheme.subtleText)
+                    }
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(DashboardTheme.cardBackground)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(DashboardTheme.cardBorder, lineWidth: 1)
+                            )
+                    )
+                }
             }
         }
     }
+
+    private func historyDetail(for item: PromptHistoryEntry) -> String {
+        let actionLabel = item.action.title(hasSelection: item.usedSelectionContext)
+        return "\(actionLabel) • \(item.status.label) • \(item.detail)"
+    }
+
+    private func tint(for status: PromptHistoryStatus) -> Color {
+        switch status {
+        case .succeeded:
+            return DashboardTheme.goodTint
+        case .failed:
+            return DashboardTheme.warnTint
+        case .cancelled:
+            return DashboardTheme.accentB
+        }
+    }
+
+    private func formattedHistoryTime(_ date: Date) -> String {
+        let age = Date().timeIntervalSince(date)
+        if age < 86_400 {
+            return Self.recentHistoryFormatter.localizedString(for: date, relativeTo: Date())
+        }
+        return Self.olderHistoryFormatter.string(from: date)
+    }
+
+    private static let recentHistoryFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        return formatter
+    }()
+
+    private static let olderHistoryFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter
+    }()
 
     private var settingsContent: some View {
         SettingsPanel(settingsStore: settingsStore)
@@ -900,14 +975,13 @@ private final class DashboardViewModel: ObservableObject {
     @Published private(set) var snapshot = DashboardSnapshot.homeLibrary.first ?? .placeholder
 
     private var homeIndex = 0
-    private var historyIndex = 0
 
     func apply(section: DashboardSection) {
         switch section {
         case .home:
             snapshot = DashboardSnapshot.homeLibrary[homeIndex]
         case .history:
-            snapshot = DashboardSnapshot.historyLibrary[historyIndex]
+            break
         case .settings:
             break
         }
@@ -919,8 +993,7 @@ private final class DashboardViewModel: ObservableObject {
             homeIndex = (homeIndex + 1) % DashboardSnapshot.homeLibrary.count
             snapshot = DashboardSnapshot.homeLibrary[homeIndex]
         case .history:
-            historyIndex = (historyIndex + 1) % DashboardSnapshot.historyLibrary.count
-            snapshot = DashboardSnapshot.historyLibrary[historyIndex]
+            break
         case .settings:
             break
         }
@@ -945,7 +1018,7 @@ private enum DashboardSection: String, CaseIterable, Identifiable {
     var subtitle: String {
         switch self {
         case .home: return "Fake dashboard data for layout and interaction preview."
-        case .history: return "Mock event timeline while backend data is not connected."
+        case .history: return "Recent prompt runs, with status and timestamps."
         case .settings: return "Configure model and shortcuts for input, replace, and insert actions."
         }
     }

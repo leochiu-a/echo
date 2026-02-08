@@ -1,6 +1,6 @@
 import Foundation
 
-enum CopilotAction: String, CaseIterable {
+enum CopilotAction: String, CaseIterable, Codable {
     case edit
     case askQuestion
 
