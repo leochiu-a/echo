@@ -300,15 +300,15 @@ private struct SettingsPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("設定")
+            Text("Settings")
                 .font(.system(size: 32, weight: .black, design: .rounded))
                 .foregroundStyle(DashboardTheme.primaryText)
 
-            SettingsSectionHeader(icon: "keyboard", title: "鍵盤快捷鍵")
+            SettingsSectionHeader(icon: "keyboard", title: "Keyboard Shortcuts")
 
             SettingsRow(
-                title: "叫出輸入框",
-                description: "切換浮動輸入框，預設為 Command + K。"
+                title: "Open Input Panel",
+                description: "Toggle the floating input panel. Default: Command + K."
             ) {
                 ShortcutRecorderField(
                     shortcut: $settingsStore.openPanelShortcut,
@@ -317,8 +317,8 @@ private struct SettingsPanel: View {
             }
 
             SettingsRow(
-                title: "Replace 功能",
-                description: "套用輸出並取代目前選取文字。"
+                title: "Replace Action",
+                description: "Apply output by replacing the current selection."
             ) {
                 ShortcutRecorderField(
                     shortcut: $settingsStore.replaceShortcut,
@@ -327,8 +327,8 @@ private struct SettingsPanel: View {
             }
 
             SettingsRow(
-                title: "Insert 功能",
-                description: "套用輸出並插入在選取內容旁邊。"
+                title: "Insert Action",
+                description: "Apply output by inserting next to the current selection."
             ) {
                 ShortcutRecorderField(
                     shortcut: $settingsStore.insertShortcut,
@@ -336,18 +336,18 @@ private struct SettingsPanel: View {
                 )
             }
 
-            SettingsSectionHeader(icon: "cpu", title: "模型")
+            SettingsSectionHeader(icon: "cpu", title: "Model")
 
             SettingsRow(
-                title: "Codex 模型",
-                description: "從下拉選單選擇執行模型（會帶入 codex exec --model）。"
+                title: "Codex Model",
+                description: "Select the execution model (passed to codex exec --model)."
             ) {
                 ModelSelectionField(selection: $settingsStore.codexModel, options: modelOptions)
             }
 
             HStack {
                 Spacer()
-                Button("儲存設定") {
+                Button("Save Settings") {
                     ensureModelSelectionValid()
                 }
                 .buttonStyle(.plain)
@@ -492,7 +492,7 @@ private struct ShortcutRecorderField: View {
             } label: {
                 HStack(spacing: 8) {
                     if isRecording {
-                        ShortcutToken(text: "按下快捷鍵…")
+                        ShortcutToken(text: "Press shortcut...")
                     } else {
                         ForEach(shortcut.displayTokens, id: \.self) { token in
                             ShortcutToken(text: token)
