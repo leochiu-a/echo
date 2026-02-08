@@ -6,7 +6,8 @@ import Testing
 @MainActor
 func canonicalModelNormalizesCase() {
     #expect(AppSettingsStore.canonicalModel(for: " GPT-5.3-Codex ") == "gpt-5.3-codex")
-    #expect(AppSettingsStore.canonicalModel(for: "GPT-5-CODEX") == "gpt-5-codex")
+    #expect(AppSettingsStore.canonicalModel(for: "gPt-5.2") == "gpt-5.2")
+    #expect(AppSettingsStore.canonicalModel(for: "GPT-5.2-CODEX") == "gpt-5.2-codex")
 }
 
 @Test

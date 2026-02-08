@@ -47,10 +47,14 @@ struct DashboardSettingsSection: View {
             SettingsSectionHeader(icon: "cpu", title: "Model")
 
             SettingsRow(
-                title: "Codex Model",
-                description: "Select the execution model (passed to codex exec --model)."
+                title: "Model",
+                description: "Select GPT or Codex execution model (passed to codex exec --model)."
             ) {
-                SelectionField(selection: $settingsStore.codexModel, options: modelOptions)
+                SelectionField(
+                    selection: $settingsStore.codexModel,
+                    options: modelOptions,
+                    displayValue: modelDisplayName
+                )
             }
 
             SettingsRow(
@@ -141,6 +145,19 @@ struct DashboardSettingsSection: View {
             return "X-High"
         default:
             return effort.capitalized
+        }
+    }
+
+    private func modelDisplayName(_ model: String) -> String {
+        switch model {
+        case "gpt-5.2":
+            return "GPT-5.2"
+        case "gpt-5.3-codex":
+            return "GPT-5.3 Codex"
+        case "gpt-5.2-codex":
+            return "GPT-5.2 Codex"
+        default:
+            return model
         }
     }
 }
