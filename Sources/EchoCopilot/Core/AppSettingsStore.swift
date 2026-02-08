@@ -30,6 +30,17 @@ struct KeyboardShortcut: Codable, Equatable, Hashable {
         return "\(modifierPart)\(keyCode.displayName)"
     }
 
+    var displayTokens: [String] {
+        var tokens: [String] = []
+        let flags = modifierFlags
+        if flags.contains(.control) { tokens.append("⌃") }
+        if flags.contains(.option) { tokens.append("⌥") }
+        if flags.contains(.shift) { tokens.append("⇧") }
+        if flags.contains(.command) { tokens.append("⌘") }
+        tokens.append(keyCode.displayName)
+        return tokens
+    }
+
     func matches(_ event: NSEvent) -> Bool {
         event.keyCode == keyCode && event.modifierFlags.normalizedShortcutModifiers == modifierFlags
     }
@@ -52,7 +63,14 @@ final class AppSettingsStore: ObservableObject {
         didSet { persistShortcutIfNeeded(insertShortcut, key: StorageKey.insertShortcut) }
     }
 
-    static let defaultCodexModel = "gpt-5"
+    static let supportedCodexModels = [
+        "GPT-5.2-Codex",
+        "GPT-5.3-Codex",
+        "GPT-5.1-Codex-Max",
+        "GPT-5.2",
+        "GPT-5.1-Codex-Mini"
+    ]
+    static let defaultCodexModel = "GPT-5.3-Codex"
     static let defaultOpenPanelShortcut = KeyboardShortcut(keyCode: UInt16(kVK_ANSI_K), modifiers: [.command])
     static let defaultReplaceShortcut = KeyboardShortcut(keyCode: UInt16(kVK_Return), modifiers: [.command])
     static let defaultInsertShortcut = KeyboardShortcut(keyCode: UInt16(kVK_Return), modifiers: [.command, .shift])
@@ -75,9 +93,11 @@ final class AppSettingsStore: ObservableObject {
         replaceShortcut = Self.defaultReplaceShortcut
         insertShortcut = Self.defaultInsertShortcut
 
-        if let storedModel = defaults.string(forKey: StorageKey.codexModel),
-           !storedModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            codexModel = storedModel
+        if let storedModel = defaults.string(forKey: StorageKey.codexModel) {
+            let trimmed = storedModel.trimmingCharacters(in: .whitespacesAndNewlines)
+            if Self.supportedCodexModels.contains(trimmed) {
+                codexModel = trimmed
+            }
         }
         openPanelShortcut = decodeShortcut(forKey: StorageKey.openPanelShortcut) ?? Self.defaultOpenPanelShortcut
         replaceShortcut = decodeShortcut(forKey: StorageKey.replaceShortcut) ?? Self.defaultReplaceShortcut
@@ -96,11 +116,14 @@ final class AppSettingsStore: ObservableObject {
     private func persistModelIfNeeded() {
         guard !isBootstrapping else { return }
         let trimmed = codexModel.trimmingCharacters(in: .whitespacesAndNewlines)
-        defaults.set(trimmed.isEmpty ? Self.defaultCodexModel : trimmed, forKey: StorageKey.codexModel)
-        if trimmed.isEmpty {
+        guard Self.supportedCodexModels.contains(trimmed) else {
             codexModel = Self.defaultCodexModel
+            defaults.set(Self.defaultCodexModel, forKey: StorageKey.codexModel)
+            NotificationCenter.default.post(name: .appSettingsDidChange, object: nil)
             return
         }
+
+        defaults.set(trimmed, forKey: StorageKey.codexModel)
         NotificationCenter.default.post(name: .appSettingsDidChange, object: nil)
     }
 

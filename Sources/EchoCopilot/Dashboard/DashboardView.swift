@@ -24,7 +24,9 @@ struct DashboardView: View {
 
                 ScrollView {
                     VStack(spacing: 16) {
-                        heroHeader
+                        if selectedSection != .settings {
+                            heroHeader
+                        }
 
                         switch selectedSection {
                         case .home:
@@ -61,12 +63,15 @@ struct DashboardView: View {
     }
 
     private var heroHeader: some View {
-        HStack(spacing: 14) {
+        let titleFontSize: CGFloat = selectedSection == .settings ? 24 : 28
+        let subtitleFontSize: CGFloat = selectedSection == .settings ? 12 : 13
+
+        return HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 5) {
                 Text(selectedSection.title)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .font(.system(size: titleFontSize, weight: .bold, design: .rounded))
                 Text(selectedSection.subtitle)
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .font(.system(size: subtitleFontSize, weight: .medium, design: .rounded))
                     .foregroundStyle(DashboardTheme.subtleText)
             }
 
@@ -291,126 +296,236 @@ private struct TypelessSidebar: View {
 
 private struct SettingsPanel: View {
     @ObservedObject var settingsStore: AppSettingsStore
+    private let modelOptions = AppSettingsStore.supportedCodexModels
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Model")
-                .font(.system(size: 16, weight: .bold, design: .rounded))
+        VStack(alignment: .leading, spacing: 20) {
+            Text("設定")
+                .font(.system(size: 32, weight: .black, design: .rounded))
                 .foregroundStyle(DashboardTheme.primaryText)
 
-            VStack(alignment: .leading, spacing: 8) {
-                TextField("Codex model (for example: gpt-5)", text: $settingsStore.codexModel)
-                    .textFieldStyle(.roundedBorder)
+            SettingsSectionHeader(icon: "keyboard", title: "鍵盤快捷鍵")
 
-                HStack(spacing: 8) {
-                    modelChip("gpt-5")
-                    modelChip("gpt-5-mini")
-                    modelChip("gpt-4.1")
-                }
-
-                Text("This value is passed to `codex exec --model`.")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(DashboardTheme.subtleText)
+            SettingsRow(
+                title: "叫出輸入框",
+                description: "切換浮動輸入框，預設為 Command + K。"
+            ) {
+                ShortcutRecorderField(
+                    shortcut: $settingsStore.openPanelShortcut,
+                    defaultShortcut: AppSettingsStore.defaultOpenPanelShortcut
+                )
             }
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(DashboardTheme.cardBackground)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .strokeBorder(DashboardTheme.cardBorder, lineWidth: 1)
-                    )
-            )
 
-            Text("Shortcuts")
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(DashboardTheme.primaryText)
+            SettingsRow(
+                title: "Replace 功能",
+                description: "套用輸出並取代目前選取文字。"
+            ) {
+                ShortcutRecorderField(
+                    shortcut: $settingsStore.replaceShortcut,
+                    defaultShortcut: AppSettingsStore.defaultReplaceShortcut
+                )
+            }
 
-            VStack(spacing: 10) {
+            SettingsRow(
+                title: "Insert 功能",
+                description: "套用輸出並插入在選取內容旁邊。"
+            ) {
                 ShortcutRecorderField(
-                    title: "Open Input Panel",
-                    subtitle: "Global shortcut to toggle the floating input panel.",
-                    shortcut: $settingsStore.openPanelShortcut
+                    shortcut: $settingsStore.insertShortcut,
+                    defaultShortcut: AppSettingsStore.defaultInsertShortcut
                 )
-                ShortcutRecorderField(
-                    title: "Replace Output",
-                    subtitle: "Apply output by replacing selected text.",
-                    shortcut: $settingsStore.replaceShortcut
-                )
-                ShortcutRecorderField(
-                    title: "Insert Output",
-                    subtitle: "Apply output by inserting next to current selection.",
-                    shortcut: $settingsStore.insertShortcut
-                )
+            }
+
+            SettingsSectionHeader(icon: "cpu", title: "模型")
+
+            SettingsRow(
+                title: "Codex 模型",
+                description: "從下拉選單選擇執行模型（會帶入 codex exec --model）。"
+            ) {
+                ModelSelectionField(selection: $settingsStore.codexModel, options: modelOptions)
             }
 
             HStack {
-                Text("Press recorder button, then type a key combination (Esc to cancel).")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(DashboardTheme.subtleText)
                 Spacer()
-                Button("Reset Defaults") {
-                    settingsStore.resetToDefaults()
+                Button("儲存設定") {
+                    ensureModelSelectionValid()
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(Color.white.opacity(0.96))
+                .padding(.horizontal, 22)
+                .padding(.vertical, 12)
+                .background(
+                    Capsule()
+                        .fill(DashboardTheme.actionTint)
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
+                        )
+                )
+                .shadow(color: DashboardTheme.actionTint.opacity(0.25), radius: 8, x: 0, y: 3)
             }
+        }
+        .padding(.top, 4)
+        .onAppear {
+            ensureModelSelectionValid()
         }
     }
 
-    private func modelChip(_ value: String) -> some View {
-        Button {
-            settingsStore.codexModel = value
+    private func ensureModelSelectionValid() {
+        guard modelOptions.contains(settingsStore.codexModel) else {
+            settingsStore.codexModel = AppSettingsStore.defaultCodexModel
+            return
+        }
+    }
+}
+
+private struct SettingsSectionHeader: View {
+    let icon: String
+    let title: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(DashboardTheme.subtleText)
+                Text(title)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(DashboardTheme.subtleText)
+            }
+            Rectangle()
+                .fill(Color.black.opacity(0.07))
+                .frame(height: 1)
+        }
+    }
+}
+
+private struct ModelSelectionField: View {
+    @Binding var selection: String
+    let options: [String]
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Menu {
+            ForEach(options, id: \.self) { model in
+                Button {
+                    selection = model
+                } label: {
+                    HStack {
+                        Text(model)
+                        Spacer()
+                        if selection == model {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
         } label: {
-            Text(value)
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule()
-                        .fill(settingsStore.codexModel == value ? DashboardTheme.sidebarActive : Color.white.opacity(0.6))
-                )
+            HStack(spacing: 10) {
+                Text(selection)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(DashboardTheme.primaryText)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(DashboardTheme.subtleText)
+            }
+            .padding(.horizontal, 14)
+            .frame(width: 390, height: 56)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.white.opacity(isHovered ? 0.82 : 0.72))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .strokeBorder(
+                                isHovered ? DashboardTheme.actionTint.opacity(0.35) : Color.black.opacity(0.08),
+                                lineWidth: 1
+                            )
+                    )
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.12)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
+
+private struct SettingsRow<Control: View>: View {
+    let title: String
+    let description: String
+    @ViewBuilder let control: () -> Control
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(DashboardTheme.primaryText)
+                Text(description)
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(DashboardTheme.subtleText)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            control()
+        }
     }
 }
 
 private struct ShortcutRecorderField: View {
-    let title: String
-    let subtitle: String
     @Binding var shortcut: KeyboardShortcut
+    let defaultShortcut: KeyboardShortcut
 
     @State private var isRecording = false
     @State private var eventMonitor: Any?
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(DashboardTheme.primaryText)
-                Text(subtitle)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(DashboardTheme.subtleText)
-            }
-            Spacer()
-
+        HStack(spacing: 10) {
             Button {
                 toggleRecording()
             } label: {
-                Text(isRecording ? "Press Shortcut..." : shortcut.displayText)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .frame(minWidth: 150)
+                HStack(spacing: 8) {
+                    if isRecording {
+                        ShortcutToken(text: "按下快捷鍵…")
+                    } else {
+                        ForEach(shortcut.displayTokens, id: \.self) { token in
+                            ShortcutToken(text: token)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .frame(width: 320, height: 56, alignment: .leading)
+                .padding(.horizontal, 10)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(isRecording ? DashboardTheme.warnTint : DashboardTheme.actionTint)
+            .buttonStyle(.plain)
+
+            Button {
+                shortcut = defaultShortcut
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(DashboardTheme.subtleText)
+                    .frame(width: 36, height: 36)
+            }
+            .buttonStyle(.plain)
         }
-        .padding(12)
+        .padding(.horizontal, 10)
+        .frame(width: 390, height: 56)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(DashboardTheme.cardBackground)
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white.opacity(0.65))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(DashboardTheme.cardBorder, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 16)
+                        .strokeBorder(
+                            isRecording ? DashboardTheme.actionTint.opacity(0.35) : Color.black.opacity(0.08),
+                            lineWidth: isRecording ? 1.5 : 1
+                        )
                 )
         )
         .onDisappear {
@@ -449,6 +564,26 @@ private struct ShortcutRecorderField: View {
             NSEvent.removeMonitor(eventMonitor)
             self.eventMonitor = nil
         }
+    }
+}
+
+private struct ShortcutToken: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 12, weight: .semibold, design: .rounded))
+            .foregroundStyle(DashboardTheme.primaryText)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.white.opacity(0.68))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .strokeBorder(Color.black.opacity(0.09), lineWidth: 1)
+                    )
+            )
     }
 }
 
