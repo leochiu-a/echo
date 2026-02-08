@@ -3,6 +3,7 @@ import SwiftUI
 struct DashboardHomeSection: View {
     @ObservedObject var historyStore: PromptHistoryStore
     @ObservedObject var codexUsageViewModel: CodexMonthlyUsageViewModel
+    @State private var loadingDotCount = 0
 
     private let metricColumns = [
         GridItem(.flexible(), spacing: 12),
@@ -61,38 +62,48 @@ struct DashboardHomeSection: View {
 
     private var codexMonthlyUsagePanel: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .center, spacing: 12) {
-                if let totalCostUSD = codexUsageViewModel.totalCostUSD {
-                    Text("Total Cost USD \(formattedUSDCost(totalCostUSD))")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(DashboardTheme.primaryText)
+            if !(codexUsageViewModel.isLoading && codexUsageViewModel.monthlyUsages.isEmpty) {
+                HStack(alignment: .center, spacing: 12) {
+                    if let totalCostUSD = codexUsageViewModel.totalCostUSD {
+                        Text("Total Cost USD \(formattedUSDCost(totalCostUSD))")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(DashboardTheme.primaryText)
+                    }
+                    Spacer()
+                    Button {
+                        codexUsageViewModel.refresh()
+                    } label: {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(codexUsageViewModel.isLoading)
+                    .pointerOnHover()
+                    if let updatedAt = codexUsageViewModel.lastUpdatedAt {
+                        Text("Updated \(Self.codexUsageUpdateTimeFormatter.string(from: updatedAt))")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(DashboardTheme.subtleText)
+                            .multilineTextAlignment(.trailing)
+                    }
                 }
-                Spacer()
-                if let updatedAt = codexUsageViewModel.lastUpdatedAt {
-                    Text("Updated \(Self.codexUsageUpdateTimeFormatter.string(from: updatedAt))")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(DashboardTheme.subtleText)
-                }
-                Button {
-                    codexUsageViewModel.refresh()
-                } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .disabled(codexUsageViewModel.isLoading)
-                .pointerOnHover()
             }
 
             if codexUsageViewModel.isLoading && codexUsageViewModel.monthlyUsages.isEmpty {
-                HStack(spacing: 8) {
+                HStack(alignment: .center, spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
-                    Text("Loading monthly Codex usage...")
+                    Text("Loading Codex usage\(String(repeating: ".", count: loadingDotCount))")
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(DashboardTheme.subtleText)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 6)
+                .onAppear {
+                    loadingDotCount = 0
+                }
+                .onReceive(Self.loadingDotsTimer) { _ in
+                    loadingDotCount = (loadingDotCount + 1) % 4
+                }
             } else if let error = codexUsageViewModel.errorText {
                 Text(error)
                     .font(.system(size: 13, weight: .medium, design: .rounded))
@@ -178,4 +189,10 @@ struct DashboardHomeSection: View {
         formatter.timeStyle = .short
         return formatter
     }()
+
+    private static let loadingDotsTimer = Timer.publish(
+        every: 0.35,
+        on: .main,
+        in: .common
+    ).autoconnect()
 }
