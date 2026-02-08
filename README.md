@@ -1,4 +1,4 @@
-# Echo Copilot POC
+# Echo POC
 
 Minimal macOS POC for:
 
@@ -38,7 +38,7 @@ This watches `Sources/**/*.swift` and `Package.swift`, rebuilds, then restarts t
 
 - Install Codex CLI and ensure `codex` is available in `PATH`.
 - Complete login first (`codex login`), otherwise Run will fail.
-- Enable Accessibility permission for Echo Copilot so selected text can be read across apps.
+- Enable Accessibility permission for Echo so selected text can be read across apps.
 
 The runner invokes:
 

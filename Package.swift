@@ -2,28 +2,28 @@
 import PackageDescription
 
 let package = Package(
-    name: "EchoCopilot",
+    name: "Echo",
     platforms: [
         .macOS(.v13)
     ],
     products: [
-        .executable(name: "EchoCopilot", targets: ["EchoCopilot"])
+        .executable(name: "Echo", targets: ["Echo"])
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-testing.git", from: "0.7.0")
     ],
     targets: [
         .executableTarget(
-            name: "EchoCopilot",
-            path: "Sources/EchoCopilot"
+            name: "Echo",
+            path: "Sources/Echo"
         ),
         .testTarget(
-            name: "EchoCopilotTests",
+            name: "EchoTests",
             dependencies: [
-                "EchoCopilot",
+                "Echo",
                 .product(name: "Testing", package: "swift-testing")
             ],
-            path: "Tests/EchoCopilotTests"
+            path: "Tests/EchoTests"
         )
     ]
 )

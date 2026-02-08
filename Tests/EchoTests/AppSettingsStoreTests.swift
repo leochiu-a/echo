@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import EchoCopilot
+@testable import Echo
 
 @Test
 @MainActor
@@ -19,7 +19,7 @@ func canonicalModelRejectsUnsupportedValue() {
 @Test
 @MainActor
 func initMigratesLegacyModelValueInDefaults() throws {
-    let suiteName = "EchoCopilotTests.\(UUID().uuidString)"
+    let suiteName = "EchoTests.\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suiteName))
     defer { defaults.removePersistentDomain(forName: suiteName) }
 
@@ -34,7 +34,7 @@ func initMigratesLegacyModelValueInDefaults() throws {
 @Test
 @MainActor
 func settingInvalidModelFallsBackToDefault() throws {
-    let suiteName = "EchoCopilotTests.\(UUID().uuidString)"
+    let suiteName = "EchoTests.\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suiteName))
     defer { defaults.removePersistentDomain(forName: suiteName) }
 

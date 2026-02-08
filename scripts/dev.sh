@@ -16,8 +16,8 @@ stop_app() {
 }
 
 launch_app() {
-  echo "[dev] launching .build/debug/EchoCopilot"
-  ./.build/debug/EchoCopilot &
+  echo "[dev] launching .build/debug/Echo"
+  ./.build/debug/Echo &
   APP_PID=$!
   echo "[dev] app pid=$APP_PID"
 }

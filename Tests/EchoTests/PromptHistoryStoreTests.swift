@@ -1,11 +1,11 @@
 import Foundation
 import Testing
-@testable import EchoCopilot
+@testable import Echo
 
 @Test
 @MainActor
 func rememberCommandDeduplicatesAndKeepsNewestOrdering() throws {
-    let suiteName = "EchoCopilotTests.\(UUID().uuidString)"
+    let suiteName = "EchoTests.\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suiteName))
     defer { defaults.removePersistentDomain(forName: suiteName) }
 
@@ -28,7 +28,7 @@ func rememberCommandDeduplicatesAndKeepsNewestOrdering() throws {
 @Test
 @MainActor
 func recordExecutionPersistsAndReloadsFromStorage() throws {
-    let suiteName = "EchoCopilotTests.\(UUID().uuidString)"
+    let suiteName = "EchoTests.\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suiteName))
     defer { defaults.removePersistentDomain(forName: suiteName) }
 
@@ -70,7 +70,7 @@ func recordExecutionPersistsAndReloadsFromStorage() throws {
 @Test
 @MainActor
 func clearRemovesEntriesAndCommands() throws {
-    let suiteName = "EchoCopilotTests.\(UUID().uuidString)"
+    let suiteName = "EchoTests.\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suiteName))
     defer { defaults.removePersistentDomain(forName: suiteName) }
 
@@ -98,7 +98,7 @@ func clearRemovesEntriesAndCommands() throws {
 @Test
 @MainActor
 func recordExecutionTruncatesLongResponseText() throws {
-    let suiteName = "EchoCopilotTests.\(UUID().uuidString)"
+    let suiteName = "EchoTests.\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suiteName))
     defer { defaults.removePersistentDomain(forName: suiteName) }
 
@@ -127,7 +127,7 @@ func recordExecutionTruncatesLongResponseText() throws {
 @Test
 @MainActor
 func deleteEntryRemovesOnlySpecifiedRecord() throws {
-    let suiteName = "EchoCopilotTests.\(UUID().uuidString)"
+    let suiteName = "EchoTests.\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suiteName))
     defer { defaults.removePersistentDomain(forName: suiteName) }
 
@@ -165,7 +165,7 @@ func deleteEntryRemovesOnlySpecifiedRecord() throws {
 @Test
 @MainActor
 func retentionPolicyPrunesExpiredEntries() throws {
-    let suiteName = "EchoCopilotTests.\(UUID().uuidString)"
+    let suiteName = "EchoTests.\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suiteName))
     defer { defaults.removePersistentDomain(forName: suiteName) }
 
@@ -205,7 +205,7 @@ func retentionPolicyPrunesExpiredEntries() throws {
 @Test
 @MainActor
 func retentionPolicyPersistsAcrossStoreReload() throws {
-    let suiteName = "EchoCopilotTests.\(UUID().uuidString)"
+    let suiteName = "EchoTests.\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suiteName))
     defer { defaults.removePersistentDomain(forName: suiteName) }
 
@@ -230,7 +230,7 @@ func retentionPolicyPersistsAcrossStoreReload() throws {
 @Test
 @MainActor
 func recordExecutionStoresTokenUsageFields() throws {
-    let suiteName = "EchoCopilotTests.\(UUID().uuidString)"
+    let suiteName = "EchoTests.\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suiteName))
     defer { defaults.removePersistentDomain(forName: suiteName) }
 

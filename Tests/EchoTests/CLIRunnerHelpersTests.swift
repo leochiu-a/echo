@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import EchoCopilot
+@testable import Echo
 
 @Test
 func composePromptEditWithoutSelectionReturnsTrimmedCommand() {
