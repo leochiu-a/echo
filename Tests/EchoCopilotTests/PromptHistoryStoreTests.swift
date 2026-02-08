@@ -44,7 +44,8 @@ func recordExecutionPersistsAndReloadsFromStorage() throws {
         action: .edit,
         usedSelectionContext: true,
         status: .succeeded,
-        detail: "Generated 128 chars."
+        detail: "Generated 128 chars.",
+        responseText: "updated paragraph result"
     )
 
     let reader = PromptHistoryStore(
@@ -63,6 +64,7 @@ func recordExecutionPersistsAndReloadsFromStorage() throws {
     #expect(firstEntry.usedSelectionContext)
     #expect(firstEntry.status == .succeeded)
     #expect(firstEntry.detail == "Generated 128 chars.")
+    #expect(firstEntry.responseText == "updated paragraph result")
 }
 
 @Test
@@ -91,4 +93,136 @@ func clearRemovesEntriesAndCommands() throws {
 
     #expect(store.entries.isEmpty)
     #expect(store.commands.isEmpty)
+}
+
+@Test
+@MainActor
+func recordExecutionTruncatesLongResponseText() throws {
+    let suiteName = "EchoCopilotTests.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let store = PromptHistoryStore(
+        defaults: defaults,
+        storageNamespace: suiteName,
+        maxEntries: 10,
+        maxCommands: 10
+    )
+
+    let longResponse = String(repeating: "a", count: 8_100)
+    store.recordExecution(
+        command: "rewrite this paragraph",
+        action: .edit,
+        usedSelectionContext: true,
+        status: .succeeded,
+        detail: "ok",
+        responseText: longResponse
+    )
+
+    let saved = try #require(store.entries.first?.responseText)
+    #expect(saved.count == 8_000)
+    #expect(saved.hasSuffix("..."))
+}
+
+@Test
+@MainActor
+func deleteEntryRemovesOnlySpecifiedRecord() throws {
+    let suiteName = "EchoCopilotTests.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let store = PromptHistoryStore(
+        defaults: defaults,
+        storageNamespace: suiteName,
+        maxEntries: 10,
+        maxCommands: 10
+    )
+
+    store.recordExecution(
+        command: "first command",
+        action: .edit,
+        usedSelectionContext: false,
+        status: .succeeded,
+        detail: "ok",
+        responseText: "first"
+    )
+    store.recordExecution(
+        command: "second command",
+        action: .askQuestion,
+        usedSelectionContext: false,
+        status: .succeeded,
+        detail: "ok",
+        responseText: "second"
+    )
+
+    let firstID = try #require(store.entries.last?.id)
+    store.deleteEntry(id: firstID)
+
+    #expect(store.entries.count == 1)
+    #expect(store.entries.first?.command == "second command")
+}
+
+@Test
+@MainActor
+func retentionPolicyPrunesExpiredEntries() throws {
+    let suiteName = "EchoCopilotTests.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let store = PromptHistoryStore(
+        defaults: defaults,
+        storageNamespace: suiteName,
+        maxEntries: 10,
+        maxCommands: 10
+    )
+
+    let now = Date()
+    store.recordExecution(
+        command: "old command",
+        action: .edit,
+        usedSelectionContext: false,
+        status: .succeeded,
+        detail: "ok",
+        responseText: "old",
+        createdAt: now.addingTimeInterval(-(8 * 24 * 60 * 60))
+    )
+    store.recordExecution(
+        command: "new command",
+        action: .edit,
+        usedSelectionContext: false,
+        status: .succeeded,
+        detail: "ok",
+        responseText: "new",
+        createdAt: now
+    )
+
+    store.retentionPolicy = .sevenDays
+
+    #expect(store.entries.count == 1)
+    #expect(store.entries.first?.command == "new command")
+}
+
+@Test
+@MainActor
+func retentionPolicyPersistsAcrossStoreReload() throws {
+    let suiteName = "EchoCopilotTests.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let writer = PromptHistoryStore(
+        defaults: defaults,
+        storageNamespace: suiteName,
+        maxEntries: 10,
+        maxCommands: 10
+    )
+    writer.retentionPolicy = .thirtyDays
+
+    let reader = PromptHistoryStore(
+        defaults: defaults,
+        storageNamespace: suiteName,
+        maxEntries: 10,
+        maxCommands: 10
+    )
+
+    #expect(reader.retentionPolicy == .thirtyDays)
 }

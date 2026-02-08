@@ -96,7 +96,8 @@ final class InlinePromptViewModel: ObservableObject {
                         action: action,
                         usedSelectionContext: usesSelectionContext,
                         status: .succeeded,
-                        detail: successDetail(for: result.stdout)
+                        detail: successDetail(for: result.stdout),
+                        responseText: result.stdout
                     )
                 } else {
                     let failure = result.stderr.isEmpty
@@ -108,7 +109,8 @@ final class InlinePromptViewModel: ObservableObject {
                         action: action,
                         usedSelectionContext: usesSelectionContext,
                         status: .failed,
-                        detail: summarizedFailureDetail(from: failure)
+                        detail: summarizedFailureDetail(from: failure),
+                        responseText: nil
                     )
                 }
             } catch is CancellationError {
@@ -117,7 +119,8 @@ final class InlinePromptViewModel: ObservableObject {
                     action: action,
                     usedSelectionContext: usesSelectionContext,
                     status: .cancelled,
-                    detail: "Execution stopped."
+                    detail: "Execution stopped.",
+                    responseText: nil
                 )
             } catch {
                 guard !Task.isCancelled else { return }
@@ -127,7 +130,8 @@ final class InlinePromptViewModel: ObservableObject {
                     action: action,
                     usedSelectionContext: usesSelectionContext,
                     status: .failed,
-                    detail: summarizedFailureDetail(from: error.localizedDescription)
+                    detail: summarizedFailureDetail(from: error.localizedDescription),
+                    responseText: nil
                 )
             }
             isRunning = false
