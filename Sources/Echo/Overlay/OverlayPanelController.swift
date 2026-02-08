@@ -274,6 +274,8 @@ final class OverlayPanelController {
     }
 }
 
+extension OverlayPanelController: OverlayPanelControlling {}
+
 final class MovableHostingView<Content: View>: NSHostingView<Content> {
     override var mouseDownCanMoveWindow: Bool { true }
 }

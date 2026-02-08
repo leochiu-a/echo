@@ -42,7 +42,7 @@ final class InlinePromptViewModel: ObservableObject {
     var onRequestClose: (() -> Void)?
     var onRequestAccept: ((String, OutputApplyMode) -> Void)?
 
-    private let appServerRunner: AppServerRunner
+    private let appServerRunner: any AppServerRunning
     private let historyStore: PromptHistoryStore
     private let settingsStore: AppSettingsStore
     private var historyIndex: Int?
@@ -53,7 +53,7 @@ final class InlinePromptViewModel: ObservableObject {
     private var suppressHistoryReset = false
 
     init(
-        appServerRunner: AppServerRunner = AppServerRunner(),
+        appServerRunner: any AppServerRunning = AppServerRunner(),
         historyStore: PromptHistoryStore? = nil,
         settingsStore: AppSettingsStore? = nil
     ) {
@@ -135,13 +135,13 @@ final class InlinePromptViewModel: ObservableObject {
                 let result = try await appServerRunner.run(
                     command: resolvedCommand,
                     selectedText: selectedContextText,
-                    action: action
-                ) { [weak self] delta in
+                    action: action,
+                    onTextDelta: { [weak self] delta in
                     await MainActor.run {
                         guard let self, self.isRunning else { return }
                         self.outputText.append(delta)
                     }
-                }
+                })
                 guard !Task.isCancelled else { return }
 
                 if result.exitCode == 0 {
