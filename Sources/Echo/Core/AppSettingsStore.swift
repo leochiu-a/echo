@@ -274,6 +274,8 @@ final class AppSettingsStore: ObservableObject {
     }
 }
 
+extension AppSettingsStore: AppSettingsStoring {}
+
 extension NSEvent.ModifierFlags {
     var normalizedShortcutModifiers: NSEvent.ModifierFlags {
         intersection([.command, .shift, .option, .control])

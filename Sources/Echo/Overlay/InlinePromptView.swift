@@ -77,6 +77,11 @@ struct InlinePromptView: View {
             HStack(spacing: 6) {
                 Spacer()
 
+                if viewModel.isRunning {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+
                 Menu {
                     Button(viewModel.hasSelectionContext ? "Edit Selection" : "Edit Text") {
                         viewModel.selectedAction = .edit
@@ -124,7 +129,7 @@ struct InlinePromptView: View {
                     .foregroundStyle(.red)
             }
 
-            if !viewModel.outputText.isEmpty {
+            if viewModel.isRunning || !viewModel.outputText.isEmpty {
                 ScrollView {
                     Text(viewModel.outputText)
                         .font(.system(size: outputFontSize, weight: .regular, design: .monospaced))
@@ -154,26 +159,37 @@ struct InlinePromptView: View {
                         .fill(Color(nsColor: .controlBackgroundColor))
                 )
 
-                if viewModel.canShowApplyButtons {
+                if viewModel.copyableOutputText != nil
+                    || viewModel.copyFeedbackText != nil
+                    || viewModel.canShowApplyButtons
+                {
                     HStack(spacing: 8) {
+                        if viewModel.copyableOutputText != nil || viewModel.copyFeedbackText != nil {
+                            copyHintChip
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+
                         Spacer()
 
-                        Button {
-                            viewModel.replaceOutput()
-                        } label: {
-                            Label("Replace", systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
-                                .font(.system(size: 12, weight: .semibold))
-                        }
-                        .buttonStyle(.bordered)
+                        if viewModel.canShowApplyButtons {
+                            Button {
+                                viewModel.replaceOutput()
+                            } label: {
+                                Label("Replace", systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .buttonStyle(.bordered)
 
-                        Button {
-                            viewModel.insertOutput()
-                        } label: {
-                            Label("Insert", systemImage: "plus.circle.fill")
-                                .font(.system(size: 12, weight: .semibold))
+                            Button {
+                                viewModel.insertOutput()
+                            } label: {
+                                Label("Insert", systemImage: "plus.circle.fill")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .buttonStyle(.bordered)
                         }
-                        .buttonStyle(.bordered)
                     }
+                    .animation(.easeOut(duration: 0.16), value: viewModel.copyFeedbackText != nil)
                 }
             }
         }
@@ -181,6 +197,22 @@ struct InlinePromptView: View {
         .frame(width: 540)
         .onChange(of: viewModel.outputText) { _ in
             updateOutputHeight()
+        }
+    }
+
+    private var copyHintChip: some View {
+        HStack(spacing: 5) {
+            Text(viewModel.copyFeedbackText ?? "Copy")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+
+            HStack(spacing: 2) {
+                Image(systemName: "command")
+                    .font(.system(size: 10, weight: .semibold))
+                Text("C")
+                    .font(.system(size: 9, weight: .semibold, design: .rounded))
+            }
+            .foregroundStyle(Color(nsColor: .secondaryLabelColor))
         }
     }
 

@@ -1,5 +1,18 @@
 import Foundation
 
+protocol AppServerRunning {
+    func run(
+        command: String,
+        selectedText: String?,
+        action: CopilotAction,
+        onTextDelta: (@Sendable (String) async -> Void)?
+    ) async throws -> CLIRunnerResult
+}
+
+protocol AppServerPrewarming: AnyObject {
+    func prewarm() async
+}
+
 enum AppServerRunnerError: LocalizedError {
     case launchFailed(String)
     case protocolError(String)
@@ -465,6 +478,25 @@ final class AppServerRunner {
         }
     }
 }
+
+extension AppServerRunner: AppServerRunning {
+    func run(
+        command: String,
+        selectedText: String?,
+        action: CopilotAction,
+        onTextDelta: (@Sendable (String) async -> Void)?
+    ) async throws -> CLIRunnerResult {
+        try await run(
+            command: command,
+            selectedText: selectedText,
+            action: action,
+            timeout: 60,
+            onTextDelta: onTextDelta
+        )
+    }
+}
+
+extension AppServerRunner: AppServerPrewarming {}
 
 private func initializeParams() -> [String: Any] {
     [

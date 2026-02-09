@@ -53,6 +53,8 @@ final class HotKeyManager {
     }
 }
 
+extension HotKeyManager: HotKeyManaging {}
+
 private let hotKeyEventHandler: EventHandlerUPP = { _, eventRef, userData in
     guard
         let eventRef,
