@@ -86,7 +86,7 @@ func clearRemovesEntriesAndCommands() throws {
         action: .askQuestion,
         usedSelectionContext: false,
         status: .failed,
-        detail: "codex exec failed"
+        detail: "codex request failed"
     )
 
     store.clear()

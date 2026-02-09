@@ -16,7 +16,7 @@ enum AppServerRunnerError: LocalizedError {
 
 private struct AppServerTurnOutcome {
     let output: String
-    let tokenUsage: CLITokenUsage?
+    let tokenUsage: CodexTokenUsage?
     let status: String
     let errorMessage: String?
 }
@@ -30,7 +30,7 @@ private actor AppServerSession {
         let threadID: String
         var turnID: String?
         var output: String = ""
-        var tokenUsage: CLITokenUsage?
+        var tokenUsage: CodexTokenUsage?
         var errorMessage: String?
         let onTextDelta: (@Sendable (String) async -> Void)?
         let continuation: CheckedContinuation<AppServerTurnOutcome, Error>
@@ -394,7 +394,7 @@ final class AppServerRunner {
         action: CopilotAction = .edit,
         timeout: TimeInterval = 60,
         onTextDelta: (@Sendable (String) async -> Void)? = nil
-    ) async throws -> CLIRunnerResult {
+    ) async throws -> CodexRunResult {
         let (configuredModel, configuredReasoningEffort) = await MainActor.run {
             (
                 AppSettingsStore.shared.codexModel,
@@ -417,7 +417,7 @@ final class AppServerRunner {
                     group.addTask {
                         let cappedTimeout = max(1, timeout)
                         try await Task.sleep(nanoseconds: UInt64(cappedTimeout * 1_000_000_000))
-                        throw CLIRunnerError.timedOut
+                        throw CodexRunError.timedOut
                     }
 
                     guard let firstResult = try await group.next() else {
@@ -432,7 +432,7 @@ final class AppServerRunner {
                 if exitCode != 0 {
                     let stderr = outcome.errorMessage?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                     let fallback = stderr.isEmpty ? "App server turn \(outcome.status)." : stderr
-                    return CLIRunnerResult(
+                    return CodexRunResult(
                         stdout: normalizedOutput,
                         stderr: fallback,
                         exitCode: exitCode,
@@ -440,7 +440,7 @@ final class AppServerRunner {
                     )
                 }
 
-                return CLIRunnerResult(
+                return CodexRunResult(
                     stdout: normalizedOutput,
                     stderr: "",
                     exitCode: exitCode,
@@ -449,9 +449,9 @@ final class AppServerRunner {
             } catch is CancellationError {
                 await session.resetSession()
                 throw CancellationError()
-            } catch CLIRunnerError.timedOut {
+            } catch CodexRunError.timedOut {
                 await session.resetSession()
-                throw CLIRunnerError.timedOut
+                throw CodexRunError.timedOut
             } catch {
                 let stderr = normalizeOutput(await session.stderrSnapshot())
                 await session.resetSession()
@@ -594,11 +594,11 @@ private func extractTurnErrorMessage(fromTurnCompletedNotification params: [Stri
     return error["message"] as? String
 }
 
-private func extractTokenUsage(fromTokenUsageUpdate params: [String: Any]) -> CLITokenUsage? {
+private func extractTokenUsage(fromTokenUsageUpdate params: [String: Any]) -> CodexTokenUsage? {
     guard let tokenUsage = params["tokenUsage"] as? [String: Any] else { return nil }
     guard let last = tokenUsage["last"] as? [String: Any] else { return nil }
 
-    return CLITokenUsage(
+    return CodexTokenUsage(
         inputTokens: numberFromAny(last["inputTokens"]),
         outputTokens: numberFromAny(last["outputTokens"]),
         totalTokens: numberFromAny(last["totalTokens"])

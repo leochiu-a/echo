@@ -9,37 +9,6 @@ func composePromptEditWithoutSelectionReturnsTrimmedCommand() {
 }
 
 @Test
-func buildCodexExecArgumentsIncludesModelAndReasoningEffort() {
-    let arguments = buildCodexExecArguments(
-        model: "gpt-5.3-codex",
-        reasoningEffort: "high",
-        outputPath: "/tmp/echo-output.txt"
-    )
-
-    #expect(arguments.contains("--model"))
-    #expect(arguments.contains("gpt-5.3-codex"))
-    #expect(arguments.contains("-c"))
-    #expect(arguments.contains("model_reasoning_effort=\"high\""))
-    #expect(arguments.suffix(2) == ["--output-last-message", "/tmp/echo-output.txt", "-"].suffix(2))
-    #expect(arguments.contains("/tmp/echo-output.txt"))
-}
-
-@Test
-func buildCodexExecArgumentsSkipsEmptyModelAndEffort() {
-    let arguments = buildCodexExecArguments(
-        model: "   ",
-        reasoningEffort: "",
-        outputPath: "/tmp/echo-output.txt"
-    )
-
-    #expect(!arguments.contains("--model"))
-    #expect(!arguments.contains("-c"))
-    #expect(arguments.contains("--output-last-message"))
-    #expect(arguments.contains("/tmp/echo-output.txt"))
-    #expect(arguments.last == "-")
-}
-
-@Test
 func composePromptEditWithSelectionIncludesInstructionAndContext() {
     let prompt = composePrompt(
         command: "shorten",
@@ -103,30 +72,4 @@ func cleanupTempFilesRemovesFiles() throws {
 
     #expect(!FileManager.default.fileExists(atPath: fileA.path))
     #expect(!FileManager.default.fileExists(atPath: fileB.path))
-}
-
-@Test
-func parseCLITokenUsageReadsInputOutputAndTotalFields() {
-    let usage = parseCLITokenUsage(from: """
-    model: gpt-5.3-codex
-    input tokens: 1,234
-    output tokens: 56
-    total tokens: 1,290
-    """)
-
-    #expect(usage?.inputTokens == 1_234)
-    #expect(usage?.outputTokens == 56)
-    #expect(usage?.totalTokens == 1_290)
-}
-
-@Test
-func parseCLITokenUsageFallsBackToTokensUsedLine() {
-    let usage = parseCLITokenUsage(from: """
-    tokens used
-    789
-    """)
-
-    #expect(usage?.inputTokens == nil)
-    #expect(usage?.outputTokens == nil)
-    #expect(usage?.totalTokens == 789)
 }

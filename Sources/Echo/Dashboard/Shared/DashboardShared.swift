@@ -23,7 +23,7 @@ enum DashboardSection: String, CaseIterable, Identifiable {
         case .home: return "Live token usage summary from your locally stored prompt history."
         case .history: return "Recent prompt runs, with status and timestamps."
         case .commands: return "Configure slash commands and prompt templates for inline input autocomplete."
-        case .settings: return "Configure model, reasoning effort, and shortcuts for input, replace, and insert actions."
+        case .settings: return "Configure Codex App Server streaming model, reasoning effort, and shortcuts for input, replace, and insert actions."
         }
     }
 }

@@ -48,7 +48,7 @@ struct DashboardSettingsSection: View {
 
             SettingsRow(
                 title: "Model",
-                description: "Select GPT or Codex execution model."
+                description: "Select the model used by Codex App Server for streaming responses."
             ) {
                 SelectionField(
                     selection: $settingsStore.codexModel,
@@ -59,7 +59,7 @@ struct DashboardSettingsSection: View {
 
             SettingsRow(
                 title: "Reasoning Effort",
-                description: "Adjust reasoning depth for execution."
+                description: "Adjust reasoning depth for Codex App Server streaming responses."
             ) {
                 SelectionField(
                     selection: $settingsStore.codexReasoningEffort,
