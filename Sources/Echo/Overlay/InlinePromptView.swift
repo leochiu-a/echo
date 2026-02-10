@@ -6,6 +6,7 @@ struct InlinePromptView: View {
     @State private var inputHeight: CGFloat = 26
     @State private var outputHeight: CGFloat = 140
     @State private var outputMeasuredWidth: CGFloat = 0
+    @State private var isSelectionTagCloseHovered = false
 
     private let outputMinHeight: CGFloat = 140
     private let outputMaxHeight: CGFloat = 420
@@ -24,6 +25,47 @@ struct InlinePromptView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            if let selectedContextInfo = viewModel.selectedContextInfo {
+                HStack(spacing: 5) {
+                    Image(systemName: "text.quote")
+                        .font(.system(size: 10, weight: .semibold))
+                    Text(selectedContextInfo)
+                        .font(.system(size: 11, weight: .semibold))
+
+                    Button {
+                        viewModel.clearSelectedContext()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(
+                                isSelectionTagCloseHovered
+                                    ? Color(nsColor: .labelColor)
+                                    : Color(nsColor: .tertiaryLabelColor)
+                            )
+                            .frame(width: 14, height: 14)
+                            .background(
+                                Circle()
+                                    .fill(
+                                        Color(nsColor: .tertiaryLabelColor)
+                                            .opacity(isSelectionTagCloseHovered ? 0.28 : 0)
+                                    )
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .pointerOnHover()
+                    .onHover { hovering in
+                        isSelectionTagCloseHovered = hovering
+                    }
+                }
+                .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule()
+                        .fill(Color(nsColor: .controlBackgroundColor))
+                )
+            }
+
             HStack(spacing: 6) {
                 ZStack(alignment: .topLeading) {
                     AutoGrowingCommandInput(

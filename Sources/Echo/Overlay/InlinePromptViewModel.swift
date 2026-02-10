@@ -103,8 +103,9 @@ final class InlinePromptViewModel: ObservableObject {
         selectedContextText = selectedText
         hasSelectionContext = selectedText != nil
         self.hasEditableSelection = hasEditableSelection
-        if let selectedText {
-            selectedContextInfo = "Using selected text context (\(selectedText.count) chars)"
+        if selectedText != nil {
+            // Keep this label short so it can fit as a compact tag near the input field.
+            selectedContextInfo = "Selected text"
         } else {
             selectedContextInfo = nil
         }
@@ -204,6 +205,12 @@ final class InlinePromptViewModel: ObservableObject {
             isRunning = false
             runningTask = nil
         }
+    }
+
+    func clearSelectedContext() {
+        selectedContextText = nil
+        hasSelectionContext = false
+        selectedContextInfo = nil
     }
 
     func cancelExecution(showCancelledMessage: Bool = true) {

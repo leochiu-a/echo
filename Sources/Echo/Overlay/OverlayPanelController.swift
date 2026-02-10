@@ -251,7 +251,7 @@ final class OverlayPanelController {
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
                 guard let self else { return }
-                if mode == .insert, viewModel.hasSelectionContext {
+                if mode == .insert, viewModel.hasEditableSelection {
                     postKeystroke(124) // Right Arrow
                 }
                 postKeystroke(9, flags: [.maskCommand]) // Cmd+V

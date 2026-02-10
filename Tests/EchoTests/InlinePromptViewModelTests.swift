@@ -11,7 +11,7 @@ func prepareForPresentationWithSelectionSetsContextFlags() {
 
     #expect(viewModel.hasSelectionContext)
     #expect(viewModel.hasEditableSelection)
-    #expect(viewModel.selectedContextInfo == "Using selected text context (3 chars)")
+    #expect(viewModel.selectedContextInfo == "Selected text")
     #expect(viewModel.selectedAction == .edit)
 }
 
@@ -25,6 +25,19 @@ func prepareForPresentationWithoutSelectionResetsContextFlags() {
     #expect(!viewModel.hasSelectionContext)
     #expect(!viewModel.hasEditableSelection)
     #expect(viewModel.selectedContextInfo == nil)
+}
+
+@Test
+@MainActor
+func clearSelectedContextRemovesOnlySelectionContext() {
+    let viewModel = InlinePromptViewModel()
+    viewModel.prepareForPresentation(selectedText: "abc", hasEditableSelection: true)
+
+    viewModel.clearSelectedContext()
+
+    #expect(!viewModel.hasSelectionContext)
+    #expect(viewModel.selectedContextInfo == nil)
+    #expect(viewModel.hasEditableSelection)
 }
 
 @Test
@@ -252,11 +265,11 @@ func executeSuccessUsesResolvedSlashCommandAndRecordsHistory() async throws {
         #expect(selectedText == "source text")
         #expect(action == CopilotAction.askQuestion)
         await onTextDelta?("delta output")
-        return CLIRunnerResult(
+        return CodexRunResult(
             stdout: "final output",
             stderr: "",
             exitCode: 0,
-            tokenUsage: CLITokenUsage(inputTokens: 12, outputTokens: 8, totalTokens: 20)
+            tokenUsage: CodexTokenUsage(inputTokens: 12, outputTokens: 8, totalTokens: 20)
         )
     }
 
@@ -302,7 +315,7 @@ func executeFailureUsesFallbackErrorWhenStderrIsEmpty() async throws {
     let settingsStore = AppSettingsStore(defaults: defaults)
 
     let appServerRunner = AppServerRunnerStub { _, _, _, _ in
-        CLIRunnerResult(stdout: "", stderr: "", exitCode: 2, tokenUsage: nil)
+        CodexRunResult(stdout: "", stderr: "", exitCode: 2, tokenUsage: nil)
     }
 
     let viewModel = InlinePromptViewModel(
@@ -338,7 +351,7 @@ func executeCancellationRecordsCancelledStatus() async throws {
 
     let appServerRunner = AppServerRunnerStub { _, _, _, _ in
         try await Task.sleep(nanoseconds: 1_000_000_000)
-        return CLIRunnerResult(stdout: "", stderr: "", exitCode: 0, tokenUsage: nil)
+        return CodexRunResult(stdout: "", stderr: "", exitCode: 0, tokenUsage: nil)
     }
 
     let viewModel = InlinePromptViewModel(
@@ -458,6 +471,26 @@ func computedLabelsAndPromptPreviewAreExposed() {
     #expect(suggestion.promptPreview == "single line")
 }
 
+@Test
+@MainActor
+func executeAfterClearingSelectedContextDoesNotSendSelectionToRunner() async {
+    var capturedSelectedText = "not-updated"
+    let appServerRunner = AppServerRunnerStub { _, selectedText, _, _ in
+        capturedSelectedText = selectedText ?? "nil"
+        return CodexRunResult(stdout: "ok", stderr: "", exitCode: 0, tokenUsage: nil)
+    }
+
+    let viewModel = InlinePromptViewModel(appServerRunner: appServerRunner)
+    viewModel.prepareForPresentation(selectedText: "source text", hasEditableSelection: true)
+    viewModel.clearSelectedContext()
+    viewModel.commandText = "rewrite this"
+
+    viewModel.execute()
+    await waitForExecutionToFinish(viewModel)
+
+    #expect(capturedSelectedText == "nil")
+}
+
 @MainActor
 private func waitForExecutionToFinish(_ viewModel: InlinePromptViewModel) async {
     await waitUntil { !viewModel.isRunning }
@@ -479,12 +512,12 @@ private final class AppServerRunnerStub: AppServerRunning {
         String?,
         CopilotAction,
         (@Sendable (String) async -> Void)?
-    ) async throws -> CLIRunnerResult
+    ) async throws -> CodexRunResult
 
     private let handler: Handler
 
     init(handler: @escaping Handler = { _, _, _, _ in
-        CLIRunnerResult(stdout: "", stderr: "", exitCode: 0, tokenUsage: nil)
+        CodexRunResult(stdout: "", stderr: "", exitCode: 0, tokenUsage: nil)
     }) {
         self.handler = handler
     }
@@ -494,7 +527,7 @@ private final class AppServerRunnerStub: AppServerRunning {
         selectedText: String?,
         action: CopilotAction,
         onTextDelta: (@Sendable (String) async -> Void)?
-    ) async throws -> CLIRunnerResult {
+    ) async throws -> CodexRunResult {
         try await handler(command, selectedText, action, onTextDelta)
     }
 }
