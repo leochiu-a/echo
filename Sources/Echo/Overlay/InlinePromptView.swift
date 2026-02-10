@@ -164,28 +164,42 @@ struct InlinePromptView: View {
                             .foregroundStyle(Color(nsColor: .labelColor))
                     }
                     .buttonStyle(.plain)
+                    .pointerOnHover()
                 } else {
                     let canSubmit = !viewModel.commandText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    Button {
+                    let showSubmitHoverHint = isSubmitHovered && !canSubmit
+                    let submitButton = Button {
                         viewModel.execute()
                     } label: {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(
                                 canSubmit
-                                    ? (isSubmitHovered ? Color(nsColor: .controlAccentColor) : Color(nsColor: .labelColor))
+                                    ? (isSubmitHovered ? Color(nsColor: .labelColor) : Color(nsColor: .secondaryLabelColor))
                                     : Color(nsColor: .tertiaryLabelColor)
                             )
                             .scaleEffect(isSubmitHovered && canSubmit ? 1.06 : 1.0)
                             .animation(.easeOut(duration: 0.12), value: isSubmitHovered)
+                            .frame(width: 20, height: 20)
                     }
                     .buttonStyle(.plain)
                     .keyboardShortcut(.return, modifiers: [])
-                    .disabled(!canSubmit)
                     .pointerOnHover()
                     .onHover { hovering in
                         isSubmitHovered = hovering
                     }
+                    .overlay(alignment: .topTrailing) {
+                        if showSubmitHoverHint {
+                                submitHoverHint
+                                .fixedSize(horizontal: true, vertical: true)
+                                .offset(x: 4, y: -30)
+                                .transition(.opacity)
+                                .allowsHitTesting(false)
+                                .zIndex(10)
+                        }
+                    }
+
+                    submitButton
                 }
             }
 
@@ -280,6 +294,23 @@ struct InlinePromptView: View {
             }
             .foregroundStyle(Color(nsColor: .secondaryLabelColor))
         }
+    }
+
+    private var submitHoverHint: some View {
+        Text("Enter message to get started")
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(Color(nsColor: .labelColor))
+            .lineLimit(1)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color(nsColor: .controlBackgroundColor))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
+                    )
+            )
     }
 
     private func updateOutputHeight() {
