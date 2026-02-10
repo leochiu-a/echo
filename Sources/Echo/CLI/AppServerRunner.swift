@@ -6,7 +6,7 @@ protocol AppServerRunning {
         selectedText: String?,
         action: CopilotAction,
         onTextDelta: (@Sendable (String) async -> Void)?
-    ) async throws -> CLIRunnerResult
+    ) async throws -> CodexRunResult
 }
 
 protocol AppServerPrewarming: AnyObject {
@@ -94,9 +94,9 @@ private actor AppServerSession {
                         )
                     )
                     let responseTurnID = extractTurnID(fromTurnStartResponse: response)
-                    await self.setCurrentTurnID(responseTurnID)
+                    self.setCurrentTurnID(responseTurnID)
                 } catch {
-                    await self.finishCurrentTurn(with: .failure(error))
+                    self.finishCurrentTurn(with: .failure(error))
                 }
             }
         }
@@ -485,7 +485,7 @@ extension AppServerRunner: AppServerRunning {
         selectedText: String?,
         action: CopilotAction,
         onTextDelta: (@Sendable (String) async -> Void)?
-    ) async throws -> CLIRunnerResult {
+    ) async throws -> CodexRunResult {
         try await run(
             command: command,
             selectedText: selectedText,
