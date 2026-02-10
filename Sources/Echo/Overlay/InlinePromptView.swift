@@ -7,6 +7,8 @@ struct InlinePromptView: View {
     @State private var outputHeight: CGFloat = 140
     @State private var outputMeasuredWidth: CGFloat = 0
     @State private var isSelectionTagCloseHovered = false
+    @State private var isPanelCloseHovered = false
+    @State private var isSubmitHovered = false
 
     private let outputMinHeight: CGFloat = 140
     private let outputMaxHeight: CGFloat = 420
@@ -100,10 +102,25 @@ struct InlinePromptView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+                        .foregroundStyle(
+                            isPanelCloseHovered
+                                ? Color(nsColor: .labelColor)
+                                : Color(nsColor: .secondaryLabelColor)
+                        )
                         .frame(width: 18, height: 18)
+                        .background(
+                            Circle()
+                                .fill(
+                                    Color(nsColor: .tertiaryLabelColor)
+                                        .opacity(isPanelCloseHovered ? 0.22 : 0)
+                                )
+                        )
                 }
                 .buttonStyle(.plain)
+                .pointerOnHover()
+                .onHover { hovering in
+                    isPanelCloseHovered = hovering
+                }
             }
 
             if viewModel.isShowingSlashAutocomplete {
@@ -148,20 +165,27 @@ struct InlinePromptView: View {
                     }
                     .buttonStyle(.plain)
                 } else {
+                    let canSubmit = !viewModel.commandText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     Button {
                         viewModel.execute()
                     } label: {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(
-                                viewModel.commandText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                    ? Color(nsColor: .tertiaryLabelColor)
-                                    : Color(nsColor: .labelColor)
+                                canSubmit
+                                    ? (isSubmitHovered ? Color(nsColor: .controlAccentColor) : Color(nsColor: .labelColor))
+                                    : Color(nsColor: .tertiaryLabelColor)
                             )
+                            .scaleEffect(isSubmitHovered && canSubmit ? 1.06 : 1.0)
+                            .animation(.easeOut(duration: 0.12), value: isSubmitHovered)
                     }
                     .buttonStyle(.plain)
                     .keyboardShortcut(.return, modifiers: [])
-                    .disabled(viewModel.commandText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!canSubmit)
+                    .pointerOnHover()
+                    .onHover { hovering in
+                        isSubmitHovered = hovering
+                    }
                 }
             }
 
