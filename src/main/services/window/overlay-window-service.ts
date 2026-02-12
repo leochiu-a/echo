@@ -5,11 +5,11 @@ import { WindowStateService } from './window-state-service'
 import { loadRendererView } from './window-url'
 
 const DEFAULT_OVERLAY_WIDTH = 760
-const DEFAULT_OVERLAY_HEIGHT = 220
+const DEFAULT_OVERLAY_HEIGHT = 176
 const OVERLAY_PADDING = 12
 const SCREEN_PADDING = 8
 const MIN_OVERLAY_WIDTH = 520
-const MIN_OVERLAY_HEIGHT = 180
+const MIN_OVERLAY_HEIGHT = 128
 const MAX_OVERLAY_HEIGHT = 520
 
 export class OverlayWindowService {

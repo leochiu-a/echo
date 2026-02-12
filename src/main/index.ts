@@ -20,6 +20,11 @@ app.on('second-instance', () => {
 app.whenReady().then(async () => {
   registerIpcHandlers(coordinator)
   await coordinator.start()
+
+  // In local dev, open a visible entry window so startup is discoverable.
+  if (process.env.VITE_DEV_SERVER_URL) {
+    await coordinator.openDashboard()
+  }
 })
 
 app.on('activate', () => {

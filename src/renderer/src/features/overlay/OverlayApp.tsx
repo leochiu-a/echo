@@ -65,6 +65,7 @@ export function OverlayApp() {
   const [historyIndex, setHistoryIndex] = useState<number | null>(null)
   const [isComposingInput, setIsComposingInput] = useState(false)
   const [highlightedSuggestionIndex, setHighlightedSuggestionIndex] = useState(0)
+  const [presentationRevision, setPresentationRevision] = useState(0)
 
   const slashSuggestions = useMemo(() => {
     const autocomplete = slashAutocompleteContext(commandText)
@@ -195,6 +196,8 @@ export function OverlayApp() {
     setCopyFeedback(null)
     setHistoryIndex(null)
     setIsComposingInput(false)
+    // Force a window height re-measure every time overlay context is refreshed.
+    setPresentationRevision((current) => current + 1)
   }
 
   function historyUp() {
@@ -357,7 +360,7 @@ export function OverlayApp() {
     return () => {
       window.cancelAnimationFrame(animationFrameID)
     }
-  }, [echo, outputText, copyFeedback, errorText, slashSuggestions.length, context.accessibilityTrusted])
+  }, [echo, outputText, copyFeedback, errorText, slashSuggestions.length, context.accessibilityTrusted, presentationRevision])
 
   return (
     <main ref={shellRef} className="overlay-shell overlay-shell--reference">
