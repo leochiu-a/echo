@@ -1,11 +1,12 @@
-import type React from "react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { AppSettings, CopilotAction } from "@shared/domain/types";
 import { availableSlashCommands } from "@shared/domain/settings";
 import { slashAutocompleteContext } from "@shared/domain/slash";
 import { getEchoApi, preloadUnavailableMessage } from "@renderer/shared/echo-api";
 import { OverlayOutputSection } from "./components/OverlayOutputSection";
 import { OverlayPromptSection } from "./components/OverlayPromptSection";
+import { useOverlayBootstrap } from "./hooks/useOverlayBootstrap";
+import { useOverlayKeyboard } from "./hooks/useOverlayKeyboard";
 import type { HistorySnapshot, OverlayContext, SlashSuggestion } from "./overlay-shared";
 
 const PROMPT_MIN_HEIGHT = 40;
@@ -23,6 +24,7 @@ export function OverlayApp() {
     selectedText: null,
     hasEditableSelection: false,
     accessibilityTrusted: true,
+    selectionBounds: null,
   });
 
   const [commandText, setCommandText] = useState("");
@@ -60,77 +62,6 @@ export function OverlayApp() {
     }
     setHighlightedSuggestionIndex(Math.max(0, slashSuggestions.length - 1));
   }, [highlightedSuggestionIndex, slashSuggestions.length]);
-
-  useEffect(() => {
-    if (!echo) {
-      setErrorText(preloadUnavailableMessage);
-      return;
-    }
-
-    const offRuntime = echo.runtime.onEvent((event) => {
-      if (event.type === "started") {
-        setIsRunning(true);
-        setErrorText(null);
-        return;
-      }
-
-      if (event.type === "delta") {
-        setOutputText((current) => `${current}${event.delta}`);
-        return;
-      }
-
-      if (event.type === "completed") {
-        setIsRunning(false);
-        if (event.result.exitCode === 0) {
-          setErrorText(null);
-          if (event.result.stdout) {
-            setOutputText(event.result.stdout);
-          }
-        } else {
-          setErrorText(
-            event.result.stderr || `Execution exited with code ${event.result.exitCode}.`,
-          );
-        }
-        return;
-      }
-
-      if (event.type === "failed") {
-        setIsRunning(false);
-        setErrorText(event.message);
-        return;
-      }
-
-      setIsRunning(false);
-      setErrorText("Stopped.");
-    });
-
-    const offContextReady = echo.overlay.onContextReady((nextContext) => {
-      prepareForPresentation(nextContext);
-    });
-
-    const offSettingsChanged = echo.settings.onChanged((nextSettings) => {
-      setSettings(nextSettings);
-    });
-
-    const offHistoryChanged = echo.history.onChanged((nextHistory) => {
-      setHistory(nextHistory as HistorySnapshot);
-    });
-
-    void echo.settings.get().then(setSettings);
-    void echo.history.get().then((nextHistory) => {
-      setHistory(nextHistory as HistorySnapshot);
-    });
-    void echo.overlay.captureContext().then((nextContext) => {
-      prepareForPresentation(nextContext);
-    });
-
-    return () => {
-      offRuntime();
-      offContextReady();
-      offSettingsChanged();
-      offHistoryChanged();
-    };
-  }, [echo]);
 
   async function executePrompt() {
     if (!echo) {
@@ -170,6 +101,16 @@ export function OverlayApp() {
     // Force a window height re-measure every time overlay context is refreshed.
     setPresentationRevision((current) => current + 1);
   }
+
+  useOverlayBootstrap({
+    echo,
+    setErrorText,
+    setIsRunning,
+    setOutputText,
+    setSettings,
+    setHistory,
+    prepareForPresentation,
+  });
 
   function historyUp() {
     if (!history || history.commands.length === 0) {
@@ -225,14 +166,15 @@ export function OverlayApp() {
       return;
     }
 
-    try {
-      await navigator.clipboard.writeText(outputText);
+    const copied = await writeTextToClipboard(outputText);
+    if (copied) {
       setCopyFeedback("Copied!");
       setTimeout(() => setCopyFeedback(null), 1100);
-    } catch {
-      setCopyFeedback("Copy failed");
-      setTimeout(() => setCopyFeedback(null), 1100);
+      return;
     }
+
+    setCopyFeedback("Copy failed");
+    setTimeout(() => setCopyFeedback(null), 1100);
   }
 
   async function onApplyOutput(mode: "replace" | "insert") {
@@ -249,79 +191,31 @@ export function OverlayApp() {
     await echo.overlay.close();
   }
 
-  async function onKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (isComposingInput) {
+  const onEscapePressed = useCallback(async () => {
+    if (!echo) {
+      setErrorText(preloadUnavailableMessage);
       return;
     }
 
-    if (event.key === "Escape") {
-      if (!echo) {
-        setErrorText(preloadUnavailableMessage);
-        return;
-      }
-
-      event.preventDefault();
-      if (isRunning) {
-        await echo.runtime.cancel();
-      } else {
-        await echo.overlay.close();
-      }
-      return;
+    if (isRunning) {
+      await echo.runtime.cancel();
     }
 
-    if (event.key === "ArrowUp") {
-      if (slashSuggestions.length > 0) {
-        event.preventDefault();
-        setHighlightedSuggestionIndex(
-          (current) => (current - 1 + slashSuggestions.length) % slashSuggestions.length,
-        );
-        return;
-      }
+    await echo.overlay.close();
+  }, [echo, isRunning]);
 
-      event.preventDefault();
-      historyUp();
-      return;
-    }
-
-    if (event.key === "ArrowDown") {
-      if (slashSuggestions.length > 0) {
-        event.preventDefault();
-        setHighlightedSuggestionIndex((current) => (current + 1) % slashSuggestions.length);
-        return;
-      }
-
-      event.preventDefault();
-      historyDown();
-      return;
-    }
-
-    if (
-      event.key === "Tab" &&
-      !event.shiftKey &&
-      !event.metaKey &&
-      !event.ctrlKey &&
-      !event.altKey
-    ) {
-      if (applyHighlightedSuggestion()) {
-        event.preventDefault();
-      }
-      return;
-    }
-
-    if (
-      event.key === "Enter" &&
-      !event.shiftKey &&
-      !event.metaKey &&
-      !event.ctrlKey &&
-      !event.altKey
-    ) {
-      event.preventDefault();
-      if (applyHighlightedSuggestion()) {
-        return;
-      }
-      await executePrompt();
-    }
-  }
+  const onKeyDown = useOverlayKeyboard({
+    isComposingInput,
+    outputText,
+    slashSuggestionsLength: slashSuggestions.length,
+    setHighlightedSuggestionIndex,
+    onCopyOutput,
+    onEscapePressed,
+    onHistoryUp: historyUp,
+    onHistoryDown: historyDown,
+    onApplyHighlightedSuggestion: applyHighlightedSuggestion,
+    onExecutePrompt: executePrompt,
+  });
 
   const actionLabel =
     selectedAction === "edit"
@@ -393,6 +287,7 @@ export function OverlayApp() {
             ...current,
             selectedText: null,
             hasEditableSelection: false,
+            selectionBounds: null,
           }));
         }}
         onOpenDashboard={() => {
@@ -432,7 +327,7 @@ export function OverlayApp() {
       {outputText || copyFeedback ? (
         <OverlayOutputSection
           outputText={outputText}
-          copyFeedback={copyFeedback}
+          copyButtonLabel={copyFeedback === "Copied!" ? "Copied" : "Copy"}
           isRunning={isRunning}
           hasEditableSelection={context.hasEditableSelection}
           onCopyOutput={() => void onCopyOutput()}
@@ -441,4 +336,43 @@ export function OverlayApp() {
       ) : null}
     </main>
   );
+}
+
+async function writeTextToClipboard(text: string): Promise<boolean> {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fallback to document-based copy for renderer contexts where Clipboard API is blocked.
+    }
+  }
+
+  return copyTextWithDocumentCommand(text);
+}
+
+function copyTextWithDocumentCommand(text: string): boolean {
+  if (typeof document === "undefined") {
+    return false;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  textarea.style.pointerEvents = "none";
+  textarea.style.left = "-9999px";
+
+  document.body.append(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  try {
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    textarea.remove();
+  }
 }

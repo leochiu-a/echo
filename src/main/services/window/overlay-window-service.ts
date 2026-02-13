@@ -76,10 +76,13 @@ export class OverlayWindowService {
       return;
     }
 
+    const boundsNearSelection = this.computeBoundsNearSelection(context);
     const preferredBounds = this.windowStateService.overlayBounds;
-    const nextBounds = preferredBounds
-      ? this.clampBounds(this.compactBounds(preferredBounds))
-      : this.computeBoundsNearCursor(window);
+    const nextBounds =
+      boundsNearSelection ??
+      (preferredBounds
+        ? this.clampBounds(this.compactBounds(preferredBounds))
+        : this.computeBoundsNearCursor());
 
     this.isProgrammaticMove = true;
     window.setBounds(nextBounds, false);
@@ -142,7 +145,25 @@ export class OverlayWindowService {
     return this.window?.webContents ?? null;
   }
 
-  private computeBoundsNearCursor(window: BrowserWindow): Rectangle {
+  private computeBoundsNearSelection(context: OverlayContextSnapshot): Rectangle | null {
+    if (!context.selectedText || !context.selectionBounds) {
+      return null;
+    }
+
+    const rawBounds: Rectangle = {
+      x: context.selectionBounds.x + context.selectionBounds.width + OVERLAY_PADDING,
+      y:
+        context.selectionBounds.y +
+        Math.round(context.selectionBounds.height / 2) -
+        Math.round(DEFAULT_OVERLAY_HEIGHT / 2),
+      width: DEFAULT_OVERLAY_WIDTH,
+      height: DEFAULT_OVERLAY_HEIGHT,
+    };
+
+    return this.clampBounds(rawBounds);
+  }
+
+  private computeBoundsNearCursor(): Rectangle {
     const cursor = screen.getCursorScreenPoint();
     const rawBounds: Rectangle = {
       x: cursor.x + OVERLAY_PADDING,

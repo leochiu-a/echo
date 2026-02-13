@@ -44,6 +44,7 @@ function makeCoordinator() {
       selectedText: null,
       hasEditableSelection: false,
       accessibilityTrusted: true,
+      selectionBounds: null,
     })),
     hideOverlay: vi.fn(),
     resizeOverlay: vi.fn(),
@@ -127,6 +128,7 @@ describe("registerIpcHandlers", () => {
       selectedText: null,
       hasEditableSelection: false,
       accessibilityTrusted: true,
+      selectionBounds: null,
     });
 
     coordinator.captureOverlayContext.mockResolvedValueOnce({
