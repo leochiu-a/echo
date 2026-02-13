@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.shared.json",
+  "compilerOptions": {
+    "composite": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "baseUrl": ".",
+    "paths": {
+      "@renderer/*": ["src/renderer/src/*"],
+      "@shared/*": ["src/shared/*"]
+    }
+  },
+  "include": ["src/renderer/src/**/*.ts", "src/renderer/src/**/*.tsx", "src/shared/**/*.ts"]
+}

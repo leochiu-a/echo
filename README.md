@@ -1,50 +1,63 @@
-# Echo POC
+# Echo (Electron Refactor)
 
-Minimal macOS POC for:
+Echo is now refactored into an Electron architecture with explicit `main / preload / renderer` boundaries.
 
-- Global `Cmd+K` hotkey
-- Inline floating panel near mouse position
-- Prompt input + local CLI execution
-- Output preview + `Cmd+Enter` accept (copies output to clipboard)
+## What is implemented
 
-## Run
+- Global shortcut registration (`Command+K` by default)
+- Overlay window near cursor with remembered window position
+- Dashboard window with `Home / History / Commands / Settings`
+- Codex runtime via persistent `codex app-server` JSON-RPC session
+- Streaming output, cancel flow, timeout/reset handling
+- Slash command normalization and prompt interpolation (`{{input}}`)
+- History retention policy and token summary
+- Secure preload bridge (`contextIsolation: true`, `nodeIntegration: false`)
+
+## Project structure
+
+- `src/main`: system integration and Electron services
+- `src/preload`: IPC whitelist API exposed to renderer
+- `src/renderer`: overlay + dashboard UI
+- `src/shared`: shared domain logic and IPC contracts
+- `Tests/unit`: unit tests for core domain rules
+
+## Development
 
 ```bash
-swift run
+pnpm install
+pnpm run dev
 ```
 
-## Dev Mode
-
-Use file-watch mode to auto build and relaunch on every Swift change:
+## Build
 
 ```bash
-./scripts/dev.sh
+pnpm run build
 ```
 
-This watches `Sources/**/*.swift` and `Package.swift`, rebuilds, then restarts the app automatically.
-
-## Current behavior
-
-- Press `Cmd+K` from any app to toggle panel.
-- Type a prompt.
-- Type `/` to trigger slash-command autocomplete. Commands are configured in Dashboard `Commands`.
-- Press `Enter` to run Codex.
-- Echo runs through Codex App Server and streams output into the panel while generation is in progress.
-- The app prewarms an app-server session on launch and reuses it across requests.
-- If text is selected in the active app when the panel opens, `Run` includes that selected text as context.
-- Use the mode menu (`Edit Selection` / `Ask Question`) to choose rewrite vs Q&A behavior.
-- While running, click `Stop` (or press `Esc`) to cancel the in-flight request.
-- Press `Cmd+Enter` to accept (copies output to clipboard).
-- Press `Esc` to close.
-
-## Prerequisites
-
-- Install Codex CLI and ensure `codex` is available in `PATH`.
-- Complete login first (`codex login`), otherwise Run will fail.
-- Enable Accessibility permission for Echo so selected text can be read across apps.
-
-Execution uses:
+## Test
 
 ```bash
-codex app-server
+pnpm test
+```
+
+## Lint
+
+```bash
+pnpm run lint
+pnpm run lint:fix
+```
+
+## Format
+
+```bash
+pnpm run format:check
+pnpm run format
+```
+
+## Pre-commit checks
+
+`husky` runs `lint-staged` on staged files during `git commit`.
+
+```bash
+pnpm run lint-staged
 ```
