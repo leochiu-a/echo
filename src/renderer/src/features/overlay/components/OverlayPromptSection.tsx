@@ -15,7 +15,6 @@ interface OverlayPromptSectionProps {
   errorText: string | null;
   promptInputRef: React.RefObject<HTMLTextAreaElement | null>;
   onClearSelection: () => void;
-  onOpenDashboard: () => void;
   onCommandChange: (value: string) => void;
   onKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void | Promise<void>;
   onCompositionStart: () => void;
@@ -41,7 +40,6 @@ export function OverlayPromptSection({
   errorText,
   promptInputRef,
   onClearSelection,
-  onOpenDashboard,
   onCommandChange,
   onKeyDown,
   onCompositionStart,
@@ -65,7 +63,7 @@ export function OverlayPromptSection({
 
   return (
     <section className="grid gap-1.5 rounded-2xl border border-white/20 bg-[radial-gradient(120%_160%_at_100%_0%,rgba(75,91,112,0.22)_0%,rgba(0,0,0,0)_56%),linear-gradient(180deg,rgba(22,25,28,0.95)_0%,rgba(18,21,24,0.95)_100%)] p-1.5 text-slate-100 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06),0_20px_60px_rgba(0,0,0,0.35)] [-webkit-app-region:drag]">
-      <header className="flex items-center justify-between gap-2.5">
+      <header className="flex items-center gap-2.5">
         <button
           type="button"
           className={selectedChipClass}
@@ -78,15 +76,6 @@ export function OverlayPromptSection({
           <span className="text-sm opacity-80">❝</span>
           <span>{hasSelectedText ? "Selected text" : "No selection"}</span>
           {hasSelectedText ? <span className="text-sm leading-none opacity-70">×</span> : null}
-        </button>
-
-        <button
-          type="button"
-          className="cursor-pointer border-0 bg-transparent px-2 py-1 text-[10px] font-medium text-white/75 [-webkit-app-region:no-drag] disabled:cursor-not-allowed disabled:opacity-45"
-          onClick={onOpenDashboard}
-          disabled={!isPreloadAvailable}
-        >
-          Dashboard
         </button>
       </header>
 

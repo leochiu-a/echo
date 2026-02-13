@@ -14,21 +14,22 @@ process.env.ECHO_RENDERER_DIST = join(__dirname, "../renderer");
 const coordinator = new AppCoordinator(preloadPath);
 
 app.on("second-instance", () => {
-  void coordinator.toggleOverlayFromHotkey();
+  void coordinator.openDashboard();
 });
 
 app.whenReady().then(async () => {
   registerIpcHandlers(coordinator);
   await coordinator.start();
 
-  // In local dev, open a visible entry window so startup is discoverable.
-  if (process.env.VITE_DEV_SERVER_URL) {
+  // On non-macOS, explicitly open an entry window on launch.
+  // macOS launch/rehydrate is handled via the `activate` event below.
+  if (process.platform !== "darwin") {
     await coordinator.openDashboard();
   }
 });
 
 app.on("activate", () => {
-  // Keep behavior minimal: overlay is hotkey-driven by default.
+  void coordinator.openDashboard();
 });
 
 app.on("before-quit", () => {

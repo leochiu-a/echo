@@ -290,13 +290,6 @@ export function OverlayApp() {
             selectionBounds: null,
           }));
         }}
-        onOpenDashboard={() => {
-          if (!echo) {
-            setErrorText(preloadUnavailableMessage);
-            return;
-          }
-          void echo.overlay.openDashboard();
-        }}
         onCommandChange={setCommandText}
         onKeyDown={(event) => void onKeyDown(event)}
         onCompositionStart={() => setIsComposingInput(true)}
