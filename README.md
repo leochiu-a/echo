@@ -61,15 +61,3 @@ pnpm run format
 ```bash
 pnpm run lint-staged
 ```
-
-## Unified local entry
-
-Use:
-
-```bash
-./scripts/dev-local.sh
-```
-
-Behavior:
-
-- If `package.json` with `scripts.dev` exists: runs Electron dev mode.
