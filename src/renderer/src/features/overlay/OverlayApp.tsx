@@ -4,48 +4,9 @@ import type { AppSettings, CopilotAction } from '@shared/domain/types'
 import { availableSlashCommands } from '@shared/domain/settings'
 import { slashAutocompleteContext } from '@shared/domain/slash'
 import { getEchoApi, preloadUnavailableMessage } from '@renderer/shared/echo-api'
-
-interface OverlayContext {
-  selectedText: string | null
-  hasEditableSelection: boolean
-  accessibilityTrusted: boolean
-}
-
-interface HistorySnapshot {
-  entries: {
-    id: string
-    command: string
-    action: CopilotAction
-    usedSelectionContext: boolean
-    status: 'succeeded' | 'failed' | 'cancelled'
-    detail: string
-    responseText: string | null
-    inputTokens: number | null
-    outputTokens: number | null
-    totalTokens: number | null
-    createdAt: string
-  }[]
-  commands: string[]
-  retentionPolicy: 'forever' | 'sevenDays' | 'thirtyDays' | 'ninetyDays'
-  tokenSummary: {
-    totalTokens: number
-    totalInputTokens: number
-    totalOutputTokens: number
-    inputTokenRunCount: number
-    outputTokenRunCount: number
-    tokenizedRunCount: number
-  }
-}
-
-interface SlashSuggestion {
-  id: string
-  command: string
-  prompt: string
-}
-
-function cn(...values: Array<string | false | null | undefined>): string {
-  return values.filter(Boolean).join(' ')
-}
+import { OverlayOutputSection } from './components/OverlayOutputSection'
+import { OverlayPromptSection } from './components/OverlayPromptSection'
+import type { HistorySnapshot, OverlayContext, SlashSuggestion } from './overlay-shared'
 
 const PROMPT_MIN_HEIGHT = 40
 const PROMPT_MAX_HEIGHT = 132
@@ -241,8 +202,8 @@ export function OverlayApp() {
     setCommandText(history.commands[nextIndex] ?? '')
   }
 
-  function applyHighlightedSuggestion(): boolean {
-    const suggestion = slashSuggestions[highlightedSuggestionIndex]
+  function applySuggestionAt(index: number): boolean {
+    const suggestion = slashSuggestions[index]
     const autocomplete = slashAutocompleteContext(commandText)
 
     if (!suggestion || !autocomplete) {
@@ -251,6 +212,10 @@ export function OverlayApp() {
 
     setCommandText(`${autocomplete.leadingWhitespace}/${suggestion.command} `)
     return true
+  }
+
+  function applyHighlightedSuggestion(): boolean {
+    return applySuggestionAt(highlightedSuggestionIndex)
   }
 
   async function onCopyOutput() {
@@ -351,13 +316,6 @@ export function OverlayApp() {
     : 'Ask Question'
 
   const modeSelectLabel = selectedAction === 'edit' ? 'Edit Selection' : 'Ask Question'
-  const hasSelectedText = Boolean(context.selectedText)
-  const selectedChipClass = cn(
-    'inline-flex h-6 cursor-pointer items-center gap-2 rounded-full border px-1.5 text-[10px] font-semibold text-white/85 [-webkit-app-region:no-drag]',
-    hasSelectedText ? 'border-[#aebfd6]/35 bg-[#1c1e23]/90' : 'border-white/10 bg-[#17191d]/80'
-  )
-  const actionControlClass =
-    'inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-0 bg-white/30 p-0 text-[12px] font-semibold leading-none text-[#16181a]/90 [-webkit-app-region:no-drag] disabled:cursor-not-allowed disabled:opacity-45'
 
   useLayoutEffect(() => {
     const promptInput = promptInputRef.current
@@ -394,213 +352,65 @@ export function OverlayApp() {
       ref={shellRef}
       className="grid h-auto w-full content-start gap-2.5 bg-[radial-gradient(90%_140%_at_100%_0%,rgba(72,89,110,0.22)_0%,rgba(0,0,0,0)_62%),linear-gradient(180deg,#121416_0%,#15181b_100%)] p-1 [-webkit-app-region:drag] sm:p-2"
     >
-      <section className="grid gap-1.5 rounded-2xl border border-white/20 bg-[radial-gradient(120%_160%_at_100%_0%,rgba(75,91,112,0.22)_0%,rgba(0,0,0,0)_56%),linear-gradient(180deg,rgba(22,25,28,0.95)_0%,rgba(18,21,24,0.95)_100%)] p-1.5 text-slate-100 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06),0_20px_60px_rgba(0,0,0,0.35)] [-webkit-app-region:drag]">
-        <header className="flex items-center justify-between gap-2.5">
-          <button
-            type="button"
-            className={selectedChipClass}
-            onClick={() => {
-              if (hasSelectedText) {
-                setContext((current) => ({ ...current, selectedText: null, hasEditableSelection: false }))
-              }
-            }}
-          >
-            <span className="text-sm opacity-80">❝</span>
-            <span>{hasSelectedText ? 'Selected text' : 'No selection'}</span>
-            {hasSelectedText ? <span className="text-sm leading-none opacity-70">×</span> : null}
-          </button>
-
-          <button
-            type="button"
-            className="cursor-pointer border-0 bg-transparent px-2 py-1 text-[10px] font-medium text-white/75 [-webkit-app-region:no-drag] disabled:cursor-not-allowed disabled:opacity-45"
-            onClick={() => {
-              if (!echo) {
-                setErrorText(preloadUnavailableMessage)
-                return
-              }
-              void echo.overlay.openDashboard()
-            }}
-            disabled={!isPreloadAvailable}
-          >
-            Dashboard
-          </button>
-        </header>
-
-        <div className="mt-1 flex items-center gap-1.5">
-          <div className="relative flex-1 rounded-[10px] border border-white/5 bg-[#16181c]/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] [-webkit-app-region:no-drag]">
-            <textarea
-              ref={promptInputRef}
-              id="prompt-input"
-              className="min-h-10 w-full resize-none overflow-y-hidden border-0 bg-transparent px-2 py-[9px] text-[14px] leading-[22px] tracking-[-0.01em] text-white/90 placeholder:text-white/35 focus:outline-none sm:text-[15px]"
-              value={commandText}
-              placeholder={actionLabel}
-              onChange={(event) => setCommandText(event.target.value)}
-              onKeyDown={(event) => void onKeyDown(event)}
-              onCompositionStart={() => setIsComposingInput(true)}
-              onCompositionEnd={() => setIsComposingInput(false)}
-              autoFocus
-              rows={1}
-            />
-          </div>
-          <button
-            type="button"
-            className="h-5 w-5 shrink-0 cursor-pointer border-0 bg-transparent p-0 text-[18px] leading-none text-white/60 [-webkit-app-region:no-drag] disabled:cursor-not-allowed disabled:opacity-45"
-            onClick={() => {
-              if (!echo) {
-                setErrorText(preloadUnavailableMessage)
-                return
-              }
-              void echo.overlay.close()
-            }}
-            disabled={!isPreloadAvailable}
-            aria-label="Close overlay"
-          >
-            ×
-          </button>
-        </div>
-
-        {slashSuggestions.length > 0 ? (
-          <ul className="mt-1.5 grid list-none gap-1 p-0 [-webkit-app-region:no-drag]">
-            {slashSuggestions.map((item, index) => (
-              <li
-                key={item.id}
-                className={cn(
-                  'grid cursor-pointer gap-0.5 rounded-[9px] border border-white/15 bg-[#111316]/80 p-1.5',
-                  index === highlightedSuggestionIndex && 'border-[#adc4e3]/50 bg-[#2c3848]/70'
-                )}
-                onMouseEnter={() => setHighlightedSuggestionIndex(index)}
-                onMouseDown={(event) => {
-                  event.preventDefault()
-                  setHighlightedSuggestionIndex(index)
-                  applyHighlightedSuggestion()
-                }}
-              >
-                <strong className="text-[12px] text-[#f7f9fb]">/{item.command}</strong>
-                <span className="text-[10px] text-slate-200/70">{previewPrompt(item.prompt)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-
-        <footer className="mt-1 flex items-center justify-end gap-1.5">
-          <div className="relative inline-flex items-center [-webkit-app-region:no-drag]">
-            <select
-              className="h-7 w-[106px] cursor-pointer appearance-none border-0 bg-transparent px-1 py-0 pr-4 text-[12px] font-semibold tracking-[-0.01em] text-white/90 focus:outline-none"
-              value={selectedAction}
-              onChange={(event) => setSelectedAction(event.target.value as CopilotAction)}
-            >
-              <option value="edit">{context.selectedText ? 'Edit Selection' : 'Edit Text'}</option>
-              <option value="askQuestion">Ask Question</option>
-            </select>
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute right-0.5 top-1/2 inline-flex h-3 w-3 -translate-y-1/2 items-center justify-center text-white/50"
-            >
-              <svg viewBox="0 0 12 12" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.4">
-                <path d="M3 4.75L6 7.5L9 4.75" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </span>
-          </div>
-
-          <div className="inline-flex items-center gap-1.5">
-            {isRunning ? (
-              <button
-                type="button"
-                className={actionControlClass}
-                onClick={() => {
-                  if (!echo) {
-                    setErrorText(preloadUnavailableMessage)
-                    return
-                  }
-                  void echo.runtime.cancel()
-                }}
-                disabled={!isPreloadAvailable}
-                aria-label="Stop execution"
-              >
-                ■
-              </button>
-            ) : (
-              <button
-                type="button"
-                className={actionControlClass}
-                onClick={() => void executePrompt()}
-                disabled={!isPreloadAvailable || !commandText.trim()}
-                aria-label={`Run ${modeSelectLabel}`}
-              >
-                ↑
-              </button>
-            )}
-
-          </div>
-        </footer>
-
-        {!context.accessibilityTrusted ? (
-          <p className="m-0 text-[11px] text-[#f5cd80]">Accessibility permission required for selected text.</p>
-        ) : null}
-        {errorText ? <p className="m-0 text-xs text-[#8d0801]">{errorText}</p> : null}
-      </section>
+      <OverlayPromptSection
+        context={context}
+        commandText={commandText}
+        actionLabel={actionLabel}
+        modeSelectLabel={modeSelectLabel}
+        selectedAction={selectedAction}
+        slashSuggestions={slashSuggestions}
+        highlightedSuggestionIndex={highlightedSuggestionIndex}
+        isPreloadAvailable={isPreloadAvailable}
+        isRunning={isRunning}
+        errorText={errorText}
+        promptInputRef={promptInputRef}
+        onClearSelection={() => {
+          setContext((current) => ({ ...current, selectedText: null, hasEditableSelection: false }))
+        }}
+        onOpenDashboard={() => {
+          if (!echo) {
+            setErrorText(preloadUnavailableMessage)
+            return
+          }
+          void echo.overlay.openDashboard()
+        }}
+        onCommandChange={setCommandText}
+        onKeyDown={(event) => void onKeyDown(event)}
+        onCompositionStart={() => setIsComposingInput(true)}
+        onCompositionEnd={() => setIsComposingInput(false)}
+        onCloseOverlay={() => {
+          if (!echo) {
+            setErrorText(preloadUnavailableMessage)
+            return
+          }
+          void echo.overlay.close()
+        }}
+        onSuggestionHover={setHighlightedSuggestionIndex}
+        onSuggestionApply={(index) => {
+          setHighlightedSuggestionIndex(index)
+          applySuggestionAt(index)
+        }}
+        onActionChange={setSelectedAction}
+        onCancelRun={() => {
+          if (!echo) {
+            setErrorText(preloadUnavailableMessage)
+            return
+          }
+          void echo.runtime.cancel()
+        }}
+        onExecutePrompt={() => void executePrompt()}
+      />
 
       {(outputText || copyFeedback) ? (
-        <section
-          className="mt-0.5 grid gap-1.5 rounded-2xl border border-white/20 bg-[#0f1114]/75 p-2.5 [-webkit-app-region:no-drag]"
-        >
-          <header className="flex items-center justify-between gap-3">
-            <h2 className="m-0 text-[13px] text-white/90">Output</h2>
-          </header>
-
-          {copyFeedback ? <p className="m-0 text-xs text-[#0b6e4f]">{copyFeedback}</p> : null}
-          <pre
-            className={cn(
-              'm-0 max-h-[200px] overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-white/20 bg-[#1a1c20]/90 p-3 text-[13px] text-[#f5f7fa]/90 [scrollbar-gutter:stable]',
-              isRunning && 'overflow-hidden [&::-webkit-scrollbar]:hidden'
-            )}
-          >
-            {outputText || 'No output yet.'}
-          </pre>
-
-          <div className="mt-0.5 flex flex-wrap items-center justify-between gap-2.5">
-            <div className="inline-flex items-center gap-1.5">
-              <button
-                type="button"
-                className="cursor-pointer rounded-[7px] border border-white/20 bg-[#1c1f24]/85 px-2 py-1 text-[11px] leading-[1.2] text-[#f4f7fb]/95 disabled:cursor-not-allowed disabled:opacity-40"
-                onClick={() => void onCopyOutput()}
-                disabled={!outputText.trim()}
-                title="Copy output (Command + C)"
-              >
-                Copy
-              </button>
-              <span className="whitespace-nowrap text-[10px] text-slate-200/65">⌘C to copy output</span>
-            </div>
-
-            <div className="inline-flex items-center gap-1.5">
-              <button
-                type="button"
-                className="cursor-pointer rounded-[7px] border border-white/20 bg-[#1c1f24]/85 px-2 py-1 text-[11px] leading-[1.2] text-[#f4f7fb]/95 disabled:cursor-not-allowed disabled:opacity-40"
-                onClick={() => void onApplyOutput('replace')}
-                disabled={!context.hasEditableSelection || !outputText.trim()}
-              >
-                Replace
-              </button>
-              <button
-                type="button"
-                className="cursor-pointer rounded-[7px] border border-white/20 bg-[#1c1f24]/85 px-2 py-1 text-[11px] leading-[1.2] text-[#f4f7fb]/95 disabled:cursor-not-allowed disabled:opacity-40"
-                onClick={() => void onApplyOutput('insert')}
-                disabled={!context.hasEditableSelection || !outputText.trim()}
-              >
-                Insert
-              </button>
-            </div>
-          </div>
-        </section>
+        <OverlayOutputSection
+          outputText={outputText}
+          copyFeedback={copyFeedback}
+          isRunning={isRunning}
+          hasEditableSelection={context.hasEditableSelection}
+          onCopyOutput={() => void onCopyOutput()}
+          onApplyOutput={(mode) => void onApplyOutput(mode)}
+        />
       ) : null}
     </main>
   )
-}
-
-function previewPrompt(prompt: string): string {
-  const singleLine = prompt.replace(/\n+/g, ' ').trim()
-  if (singleLine.length <= 96) {
-    return singleLine
-  }
-  return `${singleLine.slice(0, 93)}...`
 }
