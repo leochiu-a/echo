@@ -51,8 +51,3 @@ Use:
 Behavior:
 
 - If `package.json` with `scripts.dev` exists: runs Electron dev mode.
-- Otherwise: falls back to Swift `./scripts/dev.sh`.
-
-## Legacy Swift POC
-
-The original Swift POC code remains in `Sources/` and `Tests/EchoTests/` for migration reference during transition.

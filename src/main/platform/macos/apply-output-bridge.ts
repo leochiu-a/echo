@@ -12,8 +12,8 @@ export class MacOSApplyOutputBridge {
 
     clipboard.writeText(normalized)
 
-    // We keep this focused on keystroke automation because Electron has no native
-    // cross-app replace/insert API on macOS. This mirrors the Swift POC behavior.
+    // Keep this focused on keystroke automation because Electron has no native
+    // cross-app replace/insert API on macOS.
     const script =
       mode === 'insert'
         ? `

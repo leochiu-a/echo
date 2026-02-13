@@ -14,20 +14,10 @@ run_or_echo() {
   exec "$@"
 }
 
-run_swift_dev() {
-  if [[ -x "./scripts/dev.sh" ]]; then
-    echo "[dev-local] fallback to Swift dev mode (./scripts/dev.sh)"
-    run_or_echo ./scripts/dev.sh
-    return
-  fi
-
-  echo "[dev-local] scripts/dev.sh not found or not executable."
-  exit 1
-}
-
 if [[ ! -f "package.json" ]]; then
-  echo "[dev-local] package.json not found (Electron not initialized yet)."
-  run_swift_dev
+  echo "[dev-local] package.json not found."
+  echo "[dev-local] this repository no longer includes legacy fallback mode."
+  exit 1
 fi
 
 if ! command -v npm >/dev/null 2>&1; then
@@ -41,8 +31,8 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 
 if ! node -e 'const fs=require("fs");const p=JSON.parse(fs.readFileSync("package.json","utf8"));process.exit(p.scripts&&p.scripts.dev?0:1)'; then
-  echo "[dev-local] package.json has no scripts.dev; fallback to Swift dev mode."
-  run_swift_dev
+  echo "[dev-local] package.json has no scripts.dev."
+  exit 1
 fi
 
 if [[ ! -d "node_modules" ]]; then

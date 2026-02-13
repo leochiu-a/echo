@@ -1,7 +1,7 @@
 # Echo 重構到 Electron：模組化 Checklist
 
 更新日期：2026-02-12  
-目標：在不遺失現有功能的前提下，將目前 Swift/macOS POC 重構為 Electron 架構，並保留可維護性與可測試性。
+目標：在不遺失現有功能的前提下，持續強化 Electron 架構，並保留可維護性與可測試性。
 
 ## 進度快照（2026-02-12）
 
@@ -42,19 +42,6 @@
 - [ ] Settings 支援 model / reasoning effort / shortcuts。
 - [ ] 啟動時 prewarm `codex app-server` session。
 
-### 1.2 現行程式碼對照（用來做遷移追蹤）
-- [ ] `Sources/Echo/Core/AppCoordinator.swift`：應用流程協調、notification glue。
-- [ ] `Sources/Echo/HotKey/HotKeyManager.swift`：全域快捷鍵。
-- [ ] `Sources/Echo/Overlay/OverlayPanelController.swift`：浮動面板、鍵盤監聽、貼上套用。
-- [ ] `Sources/Echo/Core/AXContextManager.swift`：選取文字與可編輯判定。
-- [ ] `Sources/Echo/Overlay/InlinePromptViewModel.swift`：執行流程、history、slash、錯誤摘要。
-- [ ] `Sources/Echo/CLI/AppServerRunner.swift`：app-server session + JSON-RPC + 串流 + timeout/cancel。
-- [ ] `Sources/Echo/Core/AppSettingsStore.swift`：設定與 shortcut/slash commands 儲存。
-- [ ] `Sources/Echo/Core/PromptHistoryStore.swift`：history、retention、token summary。
-- [ ] `Sources/Echo/Dashboard/**`：Dashboard UI 與 usage。
-
----
-
 ## 2. 目標架構（Electron）
 
 - [ ] 採三層：`main`（system/OS 能力）、`preload`（安全 IPC）、`renderer`（UI）。
@@ -88,7 +75,7 @@ DoD
 
 DoD
 - [ ] `Cmd+K` 開啟後可正確帶入選取文字。
-- [ ] Replace/Insert 成功率符合現行 Swift 版本。
+- [ ] Replace/Insert 成功率達到可穩定日常使用。
 - [ ] 權限缺失時不 crash，且可引導使用者修復。
 
 ## Module C: Codex Runtime（app-server session）
@@ -101,7 +88,7 @@ DoD
 - [ ] prompt compose 規則（edit/question + selected text）完整搬移。
 
 DoD
-- [ ] 串流輸出行為與 Swift 版一致。
+- [ ] 串流輸出行為穩定且可預期。
 - [ ] cancel/timeout 後可再次執行，不需重啟 app。
 - [ ] model/reasoning 變更可即時生效。
 
@@ -114,7 +101,7 @@ DoD
 - [ ] 將 ViewModel 抽成可測試純邏輯（避免 UI state 與 domain state 混雜）。
 
 DoD
-- [ ] 快捷鍵體驗、快捷操作、錯誤顯示與 Swift 版等價。
+- [ ] 快捷鍵體驗、快捷操作、錯誤顯示一致且可測。
 - [ ] 輸入法組字期間不誤觸快捷行為。
 
 ## Module E: Dashboard Renderer（Home / History / Commands / Settings）
@@ -156,7 +143,7 @@ DoD
 - [ ] E2E 測試腳本：開啟面板 -> 執行 -> 串流 -> 停止 -> 套用輸出。
 - [ ] 手動驗收清單（含 Accessibility 未授權、codex 未登入、CLI 不存在）。
 - [ ] 事件與錯誤 logging（可追 session id / turn id）。
-- [ ] 建立本地快速測試入口腳本：`scripts/dev-local.sh`（行為比照 `scripts/dev.sh`，但優先跑 Electron）。
+- [ ] 建立本地快速測試入口腳本：`scripts/dev-local.sh`（統一走 Electron 流程）。
 
 DoD
 - [ ] 每次重構 PR 都能跑過最小回歸測試集合。
@@ -197,7 +184,7 @@ DoD
 
 ## 6. 完成定義（整體）
 
-- [ ] 功能等價：與 Swift POC 核心行為一致。
+- [ ] 功能完整：核心工作流程可穩定使用。
 - [ ] 架構清晰：main/preload/renderer 邊界明確，無跨層偷接。
 - [ ] 可維護：關鍵 domain 規則（slash、prompt compose、history retention）有測試。
 - [ ] 可發版：安裝、權限、更新、錯誤追蹤流程完整。
@@ -208,4 +195,4 @@ DoD
 
 - [ ] 使用 `./scripts/dev-local.sh` 作為統一入口。
 - [ ] 若 Electron 專案已初始化（存在 `package.json` 且有 `scripts.dev`），執行 `npm run dev`。
-- [ ] 若 Electron 尚未初始化，fallback 到既有 Swift 流程 `./scripts/dev.sh`。
+- [ ] 若環境不完整（缺 `package.json` 或 `scripts.dev`），立即提示錯誤並中止。
