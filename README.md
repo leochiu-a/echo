@@ -24,34 +24,42 @@ Echo is now refactored into an Electron architecture with explicit `main / prelo
 ## Development
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 ## Build
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 ## Test
 
 ```bash
-npm test
+pnpm test
 ```
 
 ## Lint
 
 ```bash
-npm run lint
-npm run lint:fix
+pnpm run lint
+pnpm run lint:fix
 ```
 
 ## Format
 
 ```bash
-npm run format:check
-npm run format
+pnpm run format:check
+pnpm run format
+```
+
+## Pre-commit checks
+
+`husky` runs `lint-staged` on staged files during `git commit`.
+
+```bash
+pnpm run lint-staged
 ```
 
 ## Unified local entry

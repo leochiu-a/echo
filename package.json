@@ -10,10 +10,12 @@
     "preview": "electron-vite preview",
     "lint": "oxlint .",
     "lint:fix": "oxlint . --fix",
+    "lint-staged": "lint-staged",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepare": "husky"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -32,7 +34,9 @@
     "@vitejs/plugin-react": "^5.1.4",
     "electron": "^40.4.0",
     "electron-vite": "^5.0.0",
+    "husky": "^9.1.7",
     "jsdom": "^28.0.0",
+    "lint-staged": "^16.2.7",
     "oxfmt": "^0.32.0",
     "oxlint": "^1.47.0",
     "postcss": "^8.5.6",
@@ -40,6 +44,13 @@
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vitest": "^4.0.18"
+  },
+  "lint-staged": {
+    "*.{js,cjs,mjs,jsx,ts,tsx}": [
+      "oxlint --fix",
+      "oxfmt"
+    ],
+    "*.{json,md,css,html}": "oxfmt"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

@@ -1,5 +1,6 @@
 .DS_Store
 .build/
+.husky/_
 node_modules/
 out/
 npm-debug.log*
