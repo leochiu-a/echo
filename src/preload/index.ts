@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { z } from 'zod'
 import {
   appSettingsSchema,
+  codexMonthlyUsageSnapshotSchema,
   ipcChannels,
   overlayContextSchema,
   promptHistoryEntrySchema,
@@ -59,6 +60,12 @@ const echoApi: EchoRendererApi = {
       return () => {
         ipcRenderer.off(ipcChannels.historyChanged, wrapped)
       }
+    }
+  },
+  usage: {
+    async getMonthly() {
+      const payload = await ipcRenderer.invoke(ipcChannels.usageGetMonthly)
+      return codexMonthlyUsageSnapshotSchema.parse(payload)
     }
   },
   overlay: {

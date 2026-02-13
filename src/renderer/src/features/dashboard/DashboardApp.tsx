@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { AppSettings, PromptHistoryRetentionPolicy } from '@shared/domain/types'
 import { getEchoApi, preloadUnavailableMessage } from '@renderer/shared/echo-api'
-import { hasPendingSettingsValue, TAB_ITEMS, type HistorySnapshot, type SettingsDraft, type TabKey, cn } from './dashboard-shared'
+import {
+  hasPendingSettingsValue,
+  TAB_ITEMS,
+  type CodexMonthlyUsageSnapshot,
+  type HistorySnapshot,
+  type SettingsDraft,
+  type TabKey,
+  cn
+} from './dashboard-shared'
 import { CommandsSection } from './sections/CommandsSection'
 import { HistorySection } from './sections/HistorySection'
 import { HomeSection } from './sections/HomeSection'
@@ -13,6 +21,7 @@ export function DashboardApp() {
   const [tab, setTab] = useState<TabKey>('home')
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [history, setHistory] = useState<HistorySnapshot | null>(null)
+  const [monthlyUsage, setMonthlyUsage] = useState<CodexMonthlyUsageSnapshot | null>(null)
   const [settingsFeedback, setSettingsFeedback] = useState<string | null>(null)
   const [commandFeedback, setCommandFeedback] = useState<string | null>(null)
 
@@ -43,12 +52,27 @@ export function DashboardApp() {
       })
     }
 
+    const refreshCCusageMonthly = () => {
+      void echo.usage
+        .getMonthly()
+        .then(setMonthlyUsage)
+        .catch((error) =>
+          setMonthlyUsage({
+            source: 'ccusage',
+            months: [],
+            fetchedAt: new Date().toISOString(),
+            error: error instanceof Error ? error.message : 'Failed to load CCusage monthly usage.'
+          })
+        )
+    }
+
     const offSettings = echo.settings.onChanged((nextSettings) => {
       hydrateFromSettings(nextSettings)
     })
 
     const offHistory = echo.history.onChanged((nextHistory) => {
       setHistory(nextHistory as HistorySnapshot)
+      refreshCCusageMonthly()
     })
 
     void echo.settings.get().then((nextSettings) => {
@@ -58,6 +82,7 @@ export function DashboardApp() {
     void echo.history.get().then((nextHistory) => {
       setHistory(nextHistory as HistorySnapshot)
     })
+    refreshCCusageMonthly()
 
     return () => {
       offSettings()
@@ -66,41 +91,6 @@ export function DashboardApp() {
   }, [echo])
 
   const activeTab = TAB_ITEMS.find((item) => item.key === tab) ?? TAB_ITEMS[0]
-
-  const monthlyUsage = useMemo(() => {
-    if (!history) {
-      return { runCount: 0, totalTokens: 0, totalInputTokens: 0, totalOutputTokens: 0 }
-    }
-
-    const now = new Date()
-    return history.entries.reduce(
-      (accumulator, entry) => {
-        const createdAt = new Date(entry.createdAt)
-        if (
-          createdAt.getUTCFullYear() !== now.getUTCFullYear() ||
-          createdAt.getUTCMonth() !== now.getUTCMonth()
-        ) {
-          return accumulator
-        }
-
-        accumulator.runCount += 1
-        accumulator.totalTokens += Math.max(0, entry.totalTokens ?? 0)
-        accumulator.totalInputTokens += Math.max(0, entry.inputTokens ?? 0)
-        accumulator.totalOutputTokens += Math.max(0, entry.outputTokens ?? 0)
-        return accumulator
-      },
-      { runCount: 0, totalTokens: 0, totalInputTokens: 0, totalOutputTokens: 0 }
-    )
-  }, [history])
-
-  const monthLabel = useMemo(
-    () =>
-      new Intl.DateTimeFormat(undefined, {
-        month: 'long',
-        year: 'numeric'
-      }).format(new Date()),
-    []
-  )
 
   const hasPendingSettings = useMemo(() => hasPendingSettingsValue(settings, settingsDraft), [settings, settingsDraft])
 
@@ -287,7 +277,6 @@ export function DashboardApp() {
               <HomeSection
                 history={history}
                 monthlyUsage={monthlyUsage}
-                monthLabel={monthLabel}
                 gaugeAngle={gaugeAngle}
               />
             ) : null}

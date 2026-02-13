@@ -1,23 +1,17 @@
 import { CalendarClock, LayoutGrid } from 'lucide-react'
 import { DashboardSubsectionHeader } from '../components/DashboardSubsectionHeader'
-import type { HistorySnapshot } from '../dashboard-shared'
+import type { CodexMonthlyUsageSnapshot, HistorySnapshot } from '../dashboard-shared'
 import { formatNumber } from '../dashboard-shared'
-
-interface MonthlyUsage {
-  runCount: number
-  totalTokens: number
-  totalInputTokens: number
-  totalOutputTokens: number
-}
 
 interface HomeSectionProps {
   history: HistorySnapshot
-  monthlyUsage: MonthlyUsage
-  monthLabel: string
+  monthlyUsage: CodexMonthlyUsageSnapshot | null
   gaugeAngle: number
 }
 
-export function HomeSection({ history, monthlyUsage, monthLabel, gaugeAngle }: HomeSectionProps) {
+export function HomeSection({ history, monthlyUsage, gaugeAngle }: HomeSectionProps) {
+  const monthlyRows = monthlyUsage?.months ?? []
+
   return (
     <section className="grid gap-5" aria-label="Home overview">
       <DashboardSubsectionHeader icon={LayoutGrid} title="Overview" />
@@ -63,28 +57,47 @@ export function HomeSection({ history, monthlyUsage, monthLabel, gaugeAngle }: H
 
       <DashboardSubsectionHeader icon={CalendarClock} title="Codex Monthly Usage" />
       <article className="grid min-w-0 gap-3 rounded-2xl border border-white/50 bg-white/80 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_8px_18px_rgba(0,0,0,0.04)]">
-        {monthlyUsage.runCount === 0 ? (
+        {!monthlyUsage ? (
+          <p className="m-0 text-[13px] font-medium leading-[1.35] text-[#4f616e]">Loading CCusage data...</p>
+        ) : monthlyUsage.error ? (
+          <p className="m-0 text-[13px] font-medium leading-[1.35] text-[#a14622]">
+            Failed to load CCusage data: {monthlyUsage.error}
+          </p>
+        ) : monthlyRows.length === 0 ? (
           <p className="m-0 text-[13px] font-medium leading-[1.35] text-[#4f616e]">
-            No usage recorded for {monthLabel} yet.
+            No CCusage monthly record found.
           </p>
         ) : (
-          <div className="flex flex-wrap items-center gap-4">
-            <strong className="w-[98px] shrink-0 text-[13px] font-bold text-[#21333d]">{monthLabel}</strong>
-            <div className="flex flex-wrap items-center gap-3.5 [&>span>b]:text-xs [&>span>b]:font-bold [&>span>b]:text-[#21333d]">
-              <span className="text-[11px] font-semibold text-[#4f616e]">
-                Runs <b>{formatNumber(monthlyUsage.runCount)}</b>
-              </span>
-              <span className="text-[11px] font-semibold text-[#4f616e]">
-                Input <b>{formatNumber(monthlyUsage.totalInputTokens)}</b>
-              </span>
-              <span className="text-[11px] font-semibold text-[#4f616e]">
-                Output <b>{formatNumber(monthlyUsage.totalOutputTokens)}</b>
-              </span>
-              <span className="text-[11px] font-semibold text-[#4f616e]">
-                Total <b>{formatNumber(monthlyUsage.totalTokens)}</b>
-              </span>
-            </div>
-          </div>
+          <ul className="m-0 grid list-none gap-2 p-0">
+            {monthlyRows.map((item) => (
+              <li
+                key={item.month}
+                className="grid gap-2 rounded-xl border border-[#d7e4e9] bg-white/70 p-2.5 text-[11px] font-semibold text-[#4f616e]"
+              >
+                <strong className="text-[13px] font-bold text-[#21333d]">{item.month}</strong>
+                <div className="flex flex-wrap items-center gap-3.5 [&>span>b]:text-xs [&>span>b]:font-bold [&>span>b]:text-[#21333d]">
+                  <span>
+                    Input <b>{formatNumber(item.inputTokens)}</b>
+                  </span>
+                  <span>
+                    Cached <b>{formatNumber(item.cachedInputTokens)}</b>
+                  </span>
+                  <span>
+                    Output <b>{formatNumber(item.outputTokens)}</b>
+                  </span>
+                  <span>
+                    Reasoning <b>{formatNumber(item.reasoningOutputTokens)}</b>
+                  </span>
+                  <span>
+                    Total <b>{formatNumber(item.totalTokens)}</b>
+                  </span>
+                  <span>
+                    Cost <b>${item.costUSD.toFixed(2)}</b>
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </article>
     </section>

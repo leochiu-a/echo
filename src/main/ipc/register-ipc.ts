@@ -49,6 +49,10 @@ export function registerIpcHandlers(coordinator: AppCoordinator): void {
     return coordinator.setHistoryRetentionPolicy(retentionPolicy)
   })
 
+  ipcMain.handle(ipcChannels.usageGetMonthly, async () => {
+    return await coordinator.getMonthlyUsageSnapshot()
+  })
+
   ipcMain.handle(ipcChannels.overlayCaptureContext, async () => {
     const snapshot = await coordinator.captureOverlayContext()
     return overlayContextSchema.parse(snapshot)

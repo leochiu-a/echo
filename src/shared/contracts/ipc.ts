@@ -52,6 +52,23 @@ export const promptHistoryTokenSummarySchema = z.object({
   tokenizedRunCount: z.number().int().nonnegative()
 })
 
+export const codexMonthlyUsageEntrySchema = z.object({
+  month: z.string().min(1),
+  inputTokens: z.number().nonnegative(),
+  cachedInputTokens: z.number().nonnegative(),
+  outputTokens: z.number().nonnegative(),
+  reasoningOutputTokens: z.number().nonnegative(),
+  totalTokens: z.number().nonnegative(),
+  costUSD: z.number().nonnegative()
+})
+
+export const codexMonthlyUsageSnapshotSchema = z.object({
+  source: z.literal('ccusage'),
+  months: z.array(codexMonthlyUsageEntrySchema),
+  fetchedAt: z.string().datetime(),
+  error: z.string().nullable()
+})
+
 export const overlayContextSchema = z.object({
   selectedText: z.string().nullable(),
   hasEditableSelection: z.boolean(),
@@ -89,6 +106,7 @@ export const ipcChannels = {
   historyDeleteEntry: 'history:delete-entry',
   historyClear: 'history:clear',
   historySetRetention: 'history:set-retention',
+  usageGetMonthly: 'usage:get-monthly',
   overlayCaptureContext: 'overlay:capture-context',
   overlayContextReady: 'overlay:context-ready',
   overlayResize: 'overlay:resize',
@@ -130,6 +148,9 @@ export interface EchoRendererApi {
         tokenSummary: z.infer<typeof promptHistoryTokenSummarySchema>
       }) => void
     ) => () => void
+  }
+  usage: {
+    getMonthly: () => Promise<z.infer<typeof codexMonthlyUsageSnapshotSchema>>
   }
   overlay: {
     captureContext: () => Promise<z.infer<typeof overlayContextSchema>>

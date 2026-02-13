@@ -112,8 +112,8 @@ export class AppCoordinator {
     return this.historyService.setRetentionPolicy(policy)
   }
 
-  monthlyUsage() {
-    return this.usageService.summarizeCurrentMonth(this.historyService.snapshot.entries)
+  async getMonthlyUsageSnapshot() {
+    return await this.usageService.getMonthlySummary()
   }
 
   async startRuntimeRun(request: RuntimeRunRequest, targetWindow: BrowserWindow): Promise<void> {

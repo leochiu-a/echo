@@ -24,6 +24,23 @@ export interface HistorySnapshot {
   }
 }
 
+export interface CodexMonthlyUsageEntry {
+  month: string
+  inputTokens: number
+  cachedInputTokens: number
+  outputTokens: number
+  reasoningOutputTokens: number
+  totalTokens: number
+  costUSD: number
+}
+
+export interface CodexMonthlyUsageSnapshot {
+  source: 'ccusage'
+  months: CodexMonthlyUsageEntry[]
+  fetchedAt: string
+  error: string | null
+}
+
 export type TabKey = 'home' | 'history' | 'commands' | 'settings'
 
 export interface SettingsDraft {
@@ -48,7 +65,7 @@ export const TAB_ITEMS: TabItem[] = [
     label: 'Home',
     pageTitle: 'Home',
     icon: House,
-    description: 'Live token usage summary from your locally stored prompt history.'
+    description: 'Live token usage summary from CCusage.'
   },
   {
     key: 'history',
