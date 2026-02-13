@@ -1,4 +1,5 @@
 import type { CopilotAction } from '@shared/domain/types'
+export { cn } from '@renderer/shared/cn'
 
 export interface OverlayContext {
   selectedText: string | null
@@ -36,10 +37,6 @@ export interface SlashSuggestion {
   id: string
   command: string
   prompt: string
-}
-
-export function cn(...values: Array<string | false | null | undefined>): string {
-  return values.filter(Boolean).join(' ')
 }
 
 export function previewPrompt(prompt: string): string {

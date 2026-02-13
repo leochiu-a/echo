@@ -6,6 +6,7 @@ import type {
 } from '@shared/domain/types'
 import type { LucideIcon } from 'lucide-react'
 import { Command as CommandIcon, History, House, SlidersHorizontal } from 'lucide-react'
+export { cn } from '@renderer/shared/cn'
 
 export const MODELS = ['gpt-5.2', 'gpt-5.3-codex', 'gpt-5.2-codex']
 export const EFFORTS = ['low', 'medium', 'high', 'xhigh']
@@ -96,10 +97,6 @@ export const RETENTION_LABEL: Record<PromptHistoryRetentionPolicy, string> = {
   sevenDays: '7 days',
   thirtyDays: '30 days',
   ninetyDays: '90 days'
-}
-
-export function cn(...values: Array<string | false | null | undefined>): string {
-  return values.filter(Boolean).join(' ')
 }
 
 export const dashboardInputClass =
