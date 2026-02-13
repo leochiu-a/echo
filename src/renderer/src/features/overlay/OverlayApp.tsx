@@ -353,11 +353,11 @@ export function OverlayApp() {
   const modeSelectLabel = selectedAction === 'edit' ? 'Edit Selection' : 'Ask Question'
   const hasSelectedText = Boolean(context.selectedText)
   const selectedChipClass = cn(
-    'inline-flex h-6 items-center gap-2 rounded-full border px-1.5 text-[10px] font-semibold text-white/85 [-webkit-app-region:no-drag]',
+    'inline-flex h-6 cursor-pointer items-center gap-2 rounded-full border px-1.5 text-[10px] font-semibold text-white/85 [-webkit-app-region:no-drag]',
     hasSelectedText ? 'border-[#aebfd6]/35 bg-[#1c1e23]/90' : 'border-white/10 bg-[#17191d]/80'
   )
   const actionControlClass =
-    'inline-flex h-7 w-7 items-center justify-center rounded-full border-0 bg-white/30 p-0 text-[12px] font-semibold leading-none text-[#16181a]/90 [-webkit-app-region:no-drag] disabled:cursor-not-allowed disabled:opacity-45'
+    'inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-0 bg-white/30 p-0 text-[12px] font-semibold leading-none text-[#16181a]/90 [-webkit-app-region:no-drag] disabled:cursor-not-allowed disabled:opacity-45'
 
   useLayoutEffect(() => {
     const promptInput = promptInputRef.current
@@ -412,7 +412,7 @@ export function OverlayApp() {
 
           <button
             type="button"
-            className="border-0 bg-transparent px-2 py-1 text-[10px] font-medium text-white/75 [-webkit-app-region:no-drag] disabled:cursor-not-allowed disabled:opacity-45"
+            className="cursor-pointer border-0 bg-transparent px-2 py-1 text-[10px] font-medium text-white/75 [-webkit-app-region:no-drag] disabled:cursor-not-allowed disabled:opacity-45"
             onClick={() => {
               if (!echo) {
                 setErrorText(preloadUnavailableMessage)
@@ -444,7 +444,7 @@ export function OverlayApp() {
           </div>
           <button
             type="button"
-            className="h-5 w-5 shrink-0 border-0 bg-transparent p-0 text-[18px] leading-none text-white/60 [-webkit-app-region:no-drag] disabled:cursor-not-allowed disabled:opacity-45"
+            className="h-5 w-5 shrink-0 cursor-pointer border-0 bg-transparent p-0 text-[18px] leading-none text-white/60 [-webkit-app-region:no-drag] disabled:cursor-not-allowed disabled:opacity-45"
             onClick={() => {
               if (!echo) {
                 setErrorText(preloadUnavailableMessage)
@@ -485,7 +485,7 @@ export function OverlayApp() {
         <footer className="mt-1 flex items-center justify-end gap-1.5">
           <div className="relative inline-flex items-center [-webkit-app-region:no-drag]">
             <select
-              className="h-7 w-[106px] appearance-none border-0 bg-transparent px-1 py-0 pr-4 text-[12px] font-semibold tracking-[-0.01em] text-white/90 focus:outline-none"
+              className="h-7 w-[106px] cursor-pointer appearance-none border-0 bg-transparent px-1 py-0 pr-4 text-[12px] font-semibold tracking-[-0.01em] text-white/90 focus:outline-none"
               value={selectedAction}
               onChange={(event) => setSelectedAction(event.target.value as CopilotAction)}
             >
@@ -562,7 +562,7 @@ export function OverlayApp() {
             <div className="inline-flex items-center gap-1.5">
               <button
                 type="button"
-                className="rounded-[7px] border border-white/20 bg-[#1c1f24]/85 px-2 py-1 text-[11px] leading-[1.2] text-[#f4f7fb]/95 disabled:cursor-not-allowed disabled:opacity-40"
+                className="cursor-pointer rounded-[7px] border border-white/20 bg-[#1c1f24]/85 px-2 py-1 text-[11px] leading-[1.2] text-[#f4f7fb]/95 disabled:cursor-not-allowed disabled:opacity-40"
                 onClick={() => void onCopyOutput()}
                 disabled={!outputText.trim()}
                 title="Copy output (Command + C)"
@@ -575,7 +575,7 @@ export function OverlayApp() {
             <div className="inline-flex items-center gap-1.5">
               <button
                 type="button"
-                className="rounded-[7px] border border-white/20 bg-[#1c1f24]/85 px-2 py-1 text-[11px] leading-[1.2] text-[#f4f7fb]/95 disabled:cursor-not-allowed disabled:opacity-40"
+                className="cursor-pointer rounded-[7px] border border-white/20 bg-[#1c1f24]/85 px-2 py-1 text-[11px] leading-[1.2] text-[#f4f7fb]/95 disabled:cursor-not-allowed disabled:opacity-40"
                 onClick={() => void onApplyOutput('replace')}
                 disabled={!context.hasEditableSelection || !outputText.trim()}
               >
@@ -583,7 +583,7 @@ export function OverlayApp() {
               </button>
               <button
                 type="button"
-                className="rounded-[7px] border border-white/20 bg-[#1c1f24]/85 px-2 py-1 text-[11px] leading-[1.2] text-[#f4f7fb]/95 disabled:cursor-not-allowed disabled:opacity-40"
+                className="cursor-pointer rounded-[7px] border border-white/20 bg-[#1c1f24]/85 px-2 py-1 text-[11px] leading-[1.2] text-[#f4f7fb]/95 disabled:cursor-not-allowed disabled:opacity-40"
                 onClick={() => void onApplyOutput('insert')}
                 disabled={!context.hasEditableSelection || !outputText.trim()}
               >
