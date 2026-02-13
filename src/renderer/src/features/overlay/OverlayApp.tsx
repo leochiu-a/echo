@@ -251,6 +251,19 @@ export function OverlayApp() {
     await echo.overlay.close();
   }
 
+  async function onEscapePressed() {
+    if (!echo) {
+      setErrorText(preloadUnavailableMessage);
+      return;
+    }
+
+    if (isRunning) {
+      await echo.runtime.cancel();
+    }
+
+    await echo.overlay.close();
+  }
+
   async function onKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (isComposingInput) {
       return;
@@ -280,17 +293,8 @@ export function OverlayApp() {
     }
 
     if (event.key === "Escape") {
-      if (!echo) {
-        setErrorText(preloadUnavailableMessage);
-        return;
-      }
-
       event.preventDefault();
-      if (isRunning) {
-        await echo.runtime.cancel();
-      } else {
-        await echo.overlay.close();
-      }
+      await onEscapePressed();
       return;
     }
 
@@ -369,6 +373,23 @@ export function OverlayApp() {
     promptInput.style.height = `${nextHeight}px`;
     promptInput.style.overflowY = contentHeight > PROMPT_MAX_HEIGHT ? "auto" : "hidden";
   }, [commandText, presentationRevision]);
+
+  useEffect(() => {
+    const onWindowKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      void onEscapePressed();
+    };
+
+    window.addEventListener("keydown", onWindowKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", onWindowKeyDown, true);
+    };
+  }, [echo, isRunning]);
 
   useEffect(() => {
     if (!echo || !shellRef.current) {
