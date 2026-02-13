@@ -226,14 +226,15 @@ export function OverlayApp() {
       return;
     }
 
-    try {
-      await navigator.clipboard.writeText(outputText);
+    const copied = await writeTextToClipboard(outputText);
+    if (copied) {
       setCopyFeedback("Copied!");
       setTimeout(() => setCopyFeedback(null), 1100);
-    } catch {
-      setCopyFeedback("Copy failed");
-      setTimeout(() => setCopyFeedback(null), 1100);
+      return;
     }
+
+    setCopyFeedback("Copy failed");
+    setTimeout(() => setCopyFeedback(null), 1100);
   }
 
   async function onApplyOutput(mode: "replace" | "insert") {
@@ -252,6 +253,29 @@ export function OverlayApp() {
 
   async function onKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (isComposingInput) {
+      return;
+    }
+
+    if (
+      event.key.toLowerCase() === "c" &&
+      event.metaKey &&
+      !event.shiftKey &&
+      !event.ctrlKey &&
+      !event.altKey
+    ) {
+      const hasPromptSelection =
+        event.currentTarget.selectionStart !== event.currentTarget.selectionEnd;
+      if (hasPromptSelection) {
+        // Preserve native copy behavior when user selects text in prompt input.
+        return;
+      }
+
+      if (!outputText.trim()) {
+        return;
+      }
+
+      event.preventDefault();
+      await onCopyOutput();
       return;
     }
 
@@ -434,7 +458,7 @@ export function OverlayApp() {
       {outputText || copyFeedback ? (
         <OverlayOutputSection
           outputText={outputText}
-          copyFeedback={copyFeedback}
+          copyButtonLabel={copyFeedback === "Copied!" ? "Copied" : "Copy"}
           isRunning={isRunning}
           hasEditableSelection={context.hasEditableSelection}
           onCopyOutput={() => void onCopyOutput()}
@@ -443,4 +467,43 @@ export function OverlayApp() {
       ) : null}
     </main>
   );
+}
+
+async function writeTextToClipboard(text: string): Promise<boolean> {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fallback to document-based copy for renderer contexts where Clipboard API is blocked.
+    }
+  }
+
+  return copyTextWithDocumentCommand(text);
+}
+
+function copyTextWithDocumentCommand(text: string): boolean {
+  if (typeof document === "undefined") {
+    return false;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  textarea.style.pointerEvents = "none";
+  textarea.style.left = "-9999px";
+
+  document.body.append(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  try {
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    textarea.remove();
+  }
 }
