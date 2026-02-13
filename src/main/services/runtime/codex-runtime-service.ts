@@ -48,6 +48,7 @@ interface TurnState {
   output: string
   tokenUsage: TokenUsage | null
   errorMessage: string | null
+  onDelta: (delta: string) => void
   resolve: (value: AppServerTurnOutcome) => void
   reject: (error: Error) => void
 }
@@ -94,7 +95,7 @@ export class CodexRuntimeService {
 
     try {
       const prompt = composePrompt(request.command, request.selectedText, request.action)
-      const outcome = await this.executeTurnWithTimeout(prompt, settings)
+      const outcome = await this.executeTurnWithTimeout(prompt, settings, onEvent)
       const stdout = normalizeOutput(outcome.output)
 
       const result: RuntimeRunResult =
@@ -135,7 +136,11 @@ export class CodexRuntimeService {
     await this.resetSession(new Error('Runtime disposed.'))
   }
 
-  private async executeTurnWithTimeout(prompt: string, settings: AppSettings): Promise<AppServerTurnOutcome> {
+  private async executeTurnWithTimeout(
+    prompt: string,
+    settings: AppSettings,
+    onEvent: (event: RuntimeStreamEvent) => void
+  ): Promise<AppServerTurnOutcome> {
     const timeoutHandle = setTimeout(() => {
       this.lifecycleEvents.emit('timeout')
     }, REQUEST_TIMEOUT_MS)
@@ -150,7 +155,9 @@ export class CodexRuntimeService {
       })
 
       return await Promise.race([
-        this.executeTurn(prompt, settings.codexModel, settings.codexReasoningEffort),
+        this.executeTurn(prompt, settings.codexModel, settings.codexReasoningEffort, (delta) => {
+          onEvent({ type: 'delta', delta })
+        }),
         timeoutPromise
       ])
     } catch (error) {
@@ -164,7 +171,8 @@ export class CodexRuntimeService {
   private async executeTurn(
     prompt: string,
     model: string,
-    reasoningEffort: string
+    reasoningEffort: string,
+    onDelta: (delta: string) => void
   ): Promise<AppServerTurnOutcome> {
     await this.ensureSession(model)
 
@@ -182,6 +190,7 @@ export class CodexRuntimeService {
         output: '',
         tokenUsage: null,
         errorMessage: null,
+        onDelta,
         resolve,
         reject
       }
@@ -345,6 +354,7 @@ export class CodexRuntimeService {
 
       if (this.currentTurn) {
         this.currentTurn.output += delta
+        this.currentTurn.onDelta(delta)
       }
       return
     }
@@ -363,6 +373,7 @@ export class CodexRuntimeService {
       const text = item.text
       if (itemType === 'agentMessage' && typeof text === 'string' && text && !this.currentTurn.output) {
         this.currentTurn.output = text
+        this.currentTurn.onDelta(text)
       }
       return
     }
