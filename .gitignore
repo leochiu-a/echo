@@ -5,3 +5,6 @@ node_modules/
 out/
 release/
 npm-debug.log*
+
+*storybook.log
+storybook-static
