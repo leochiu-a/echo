@@ -43,3 +43,30 @@ body[data-echo-view="overlay"] {
 body[data-echo-view="overlay"] #root {
   background: transparent;
 }
+
+.echo-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(226, 232, 240, 0.4) rgba(15, 17, 20, 0.12);
+}
+
+.echo-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.echo-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 17, 20, 0.12);
+  border-radius: 999px;
+}
+
+.echo-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(226, 232, 240, 0.4);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+.echo-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(226, 232, 240, 0.55);
+  background-clip: content-box;
+}

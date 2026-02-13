@@ -25,7 +25,7 @@ export function OverlayOutputSection({
 
       <pre
         className={cn(
-          "m-0 max-h-[200px] overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-white/20 bg-[#1a1c20]/90 p-3 text-[13px] text-[#f5f7fa]/90 [scrollbar-gutter:stable]",
+          "echo-scrollbar m-0 max-h-[200px] overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-white/20 bg-[#1a1c20]/90 p-3 text-[13px] text-[#f5f7fa]/90 [scrollbar-gutter:stable]",
           isRunning && "overflow-hidden [&::-webkit-scrollbar]:hidden",
         )}
       >
