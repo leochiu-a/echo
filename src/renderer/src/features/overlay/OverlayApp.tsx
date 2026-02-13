@@ -23,6 +23,7 @@ export function OverlayApp() {
     selectedText: null,
     hasEditableSelection: false,
     accessibilityTrusted: true,
+    selectionBounds: null,
   });
 
   const [commandText, setCommandText] = useState("");
@@ -393,6 +394,7 @@ export function OverlayApp() {
             ...current,
             selectedText: null,
             hasEditableSelection: false,
+            selectionBounds: null,
           }));
         }}
         onOpenDashboard={() => {

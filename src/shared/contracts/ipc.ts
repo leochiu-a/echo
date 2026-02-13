@@ -69,10 +69,18 @@ export const codexMonthlyUsageSnapshotSchema = z.object({
   error: z.string().nullable(),
 });
 
+const overlaySelectionBoundsSchema = z.object({
+  x: z.number().finite(),
+  y: z.number().finite(),
+  width: z.number().finite(),
+  height: z.number().finite(),
+});
+
 export const overlayContextSchema = z.object({
   selectedText: z.string().nullable(),
   hasEditableSelection: z.boolean(),
   accessibilityTrusted: z.boolean(),
+  selectionBounds: overlaySelectionBoundsSchema.nullable(),
 });
 
 export const runPromptRequestSchema = z.object({

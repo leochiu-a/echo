@@ -2,7 +2,7 @@ import { cn } from "../overlay-shared";
 
 interface OverlayOutputSectionProps {
   outputText: string;
-  copyFeedback: string | null;
+  copyButtonLabel: "Copy" | "Copied";
   isRunning: boolean;
   hasEditableSelection: boolean;
   onCopyOutput: () => void;
@@ -11,7 +11,7 @@ interface OverlayOutputSectionProps {
 
 export function OverlayOutputSection({
   outputText,
-  copyFeedback,
+  copyButtonLabel,
   isRunning,
   hasEditableSelection,
   onCopyOutput,
@@ -23,7 +23,6 @@ export function OverlayOutputSection({
         <h2 className="m-0 text-[13px] text-white/90">Output</h2>
       </header>
 
-      {copyFeedback ? <p className="m-0 text-xs text-[#0b6e4f]">{copyFeedback}</p> : null}
       <pre
         className={cn(
           "m-0 max-h-[200px] overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-white/20 bg-[#1a1c20]/90 p-3 text-[13px] text-[#f5f7fa]/90 [scrollbar-gutter:stable]",
@@ -42,7 +41,7 @@ export function OverlayOutputSection({
             disabled={!outputText.trim()}
             title="Copy output (Command + C)"
           >
-            Copy
+            {copyButtonLabel}
           </button>
           <span className="whitespace-nowrap text-[10px] text-slate-200/65">⌘C to copy output</span>
         </div>

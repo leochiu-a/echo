@@ -5,6 +5,12 @@ export interface OverlayContext {
   selectedText: string | null;
   hasEditableSelection: boolean;
   accessibilityTrusted: boolean;
+  selectionBounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null;
 }
 
 export interface HistorySnapshot {

@@ -68,6 +68,7 @@ const mocks = vi.hoisted(() => {
       selectedText: "hello",
       hasEditableSelection: true,
       accessibilityTrusted: true,
+      selectionBounds: { x: 100, y: 120, width: 320, height: 42 },
     })),
     applyOutput: vi.fn(async () => true),
     resolveSlashCommandPrompt: vi.fn((command: string) => `resolved:${command}`),
