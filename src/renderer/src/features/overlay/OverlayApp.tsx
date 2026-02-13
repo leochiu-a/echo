@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AppSettings, CopilotAction } from '@shared/domain/types'
 import { availableSlashCommands } from '@shared/domain/settings'
 import { slashAutocompleteContext } from '@shared/domain/slash'
@@ -47,10 +47,14 @@ function cn(...values: Array<string | false | null | undefined>): string {
   return values.filter(Boolean).join(' ')
 }
 
+const PROMPT_MIN_HEIGHT = 40
+const PROMPT_MAX_HEIGHT = 132
+
 export function OverlayApp() {
   const echo = getEchoApi()
   const isPreloadAvailable = echo !== null
   const shellRef = useRef<HTMLElement | null>(null)
+  const promptInputRef = useRef<HTMLTextAreaElement | null>(null)
 
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [history, setHistory] = useState<HistorySnapshot | null>(null)
@@ -355,6 +359,19 @@ export function OverlayApp() {
   const actionControlClass =
     'inline-flex h-7 w-7 items-center justify-center rounded-full border-0 bg-white/30 p-0 text-[12px] font-semibold leading-none text-[#16181a]/90 [-webkit-app-region:no-drag] disabled:cursor-not-allowed disabled:opacity-45'
 
+  useLayoutEffect(() => {
+    const promptInput = promptInputRef.current
+    if (!promptInput) {
+      return
+    }
+
+    promptInput.style.height = '0px'
+    const contentHeight = promptInput.scrollHeight
+    const nextHeight = Math.max(PROMPT_MIN_HEIGHT, Math.min(contentHeight, PROMPT_MAX_HEIGHT))
+    promptInput.style.height = `${nextHeight}px`
+    promptInput.style.overflowY = contentHeight > PROMPT_MAX_HEIGHT ? 'auto' : 'hidden'
+  }, [commandText, presentationRevision])
+
   useEffect(() => {
     if (!echo || !shellRef.current) {
       return
@@ -370,7 +387,7 @@ export function OverlayApp() {
     return () => {
       window.cancelAnimationFrame(animationFrameID)
     }
-  }, [echo, outputText, copyFeedback, errorText, slashSuggestions.length, context.accessibilityTrusted, presentationRevision])
+  }, [echo, commandText, outputText, copyFeedback, errorText, slashSuggestions.length, context.accessibilityTrusted, presentationRevision])
 
   return (
     <main
@@ -412,8 +429,9 @@ export function OverlayApp() {
         <div className="mt-1 flex items-center gap-1.5">
           <div className="relative flex-1 rounded-[10px] border border-white/5 bg-[#16181c]/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] [-webkit-app-region:no-drag]">
             <textarea
+              ref={promptInputRef}
               id="prompt-input"
-              className="h-10 max-h-10 min-h-10 w-full resize-none overflow-y-hidden border-0 bg-transparent px-2 py-[9px] text-[14px] leading-[22px] tracking-[-0.01em] text-white/90 placeholder:text-white/35 focus:outline-none sm:text-[15px]"
+              className="min-h-10 w-full resize-none overflow-y-hidden border-0 bg-transparent px-2 py-[9px] text-[14px] leading-[22px] tracking-[-0.01em] text-white/90 placeholder:text-white/35 focus:outline-none sm:text-[15px]"
               value={commandText}
               placeholder={actionLabel}
               onChange={(event) => setCommandText(event.target.value)}
