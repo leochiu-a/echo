@@ -43,6 +43,10 @@ interface SlashSuggestion {
   prompt: string
 }
 
+function cn(...values: Array<string | false | null | undefined>): string {
+  return values.filter(Boolean).join(' ')
+}
+
 export function OverlayApp() {
   const echo = getEchoApi()
   const isPreloadAvailable = echo !== null
@@ -344,6 +348,10 @@ export function OverlayApp() {
 
   const modeSelectLabel = selectedAction === 'edit' ? 'Edit Selection' : 'Ask Question'
   const hasSelectedText = Boolean(context.selectedText)
+  const selectedChipClass = cn(
+    'inline-flex h-7 items-center gap-2.5 rounded-full border px-2 text-[11px] font-semibold text-white/85 [-webkit-app-region:no-drag]',
+    hasSelectedText ? 'border-[#aebfd6]/35 bg-[#1c1e23]/90' : 'border-white/10 bg-[#17191d]/80'
+  )
 
   useEffect(() => {
     if (!echo || !shellRef.current) {
@@ -363,26 +371,29 @@ export function OverlayApp() {
   }, [echo, outputText, copyFeedback, errorText, slashSuggestions.length, context.accessibilityTrusted, presentationRevision])
 
   return (
-    <main ref={shellRef} className="overlay-shell overlay-shell--reference">
-      <section className="composer-card">
-        <header className="composer-top-row">
+    <main
+      ref={shellRef}
+      className="grid h-auto w-full content-start gap-3 bg-[radial-gradient(90%_140%_at_100%_0%,rgba(72,89,110,0.22)_0%,rgba(0,0,0,0)_62%),linear-gradient(180deg,#121416_0%,#15181b_100%)] p-1.5 [-webkit-app-region:drag] sm:p-2.5"
+    >
+      <section className="grid gap-2 rounded-2xl border border-white/20 bg-[radial-gradient(120%_160%_at_100%_0%,rgba(75,91,112,0.22)_0%,rgba(0,0,0,0)_56%),linear-gradient(180deg,rgba(22,25,28,0.95)_0%,rgba(18,21,24,0.95)_100%)] p-2 text-slate-100 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06),0_20px_60px_rgba(0,0,0,0.35)] [-webkit-app-region:drag]">
+        <header className="flex items-center justify-between gap-2.5">
           <button
             type="button"
-            className={`selected-chip ${hasSelectedText ? 'active' : ''}`}
+            className={selectedChipClass}
             onClick={() => {
               if (hasSelectedText) {
                 setContext((current) => ({ ...current, selectedText: null, hasEditableSelection: false }))
               }
             }}
           >
-            <span className="chip-mark">❝</span>
+            <span className="text-sm opacity-80">❝</span>
             <span>{hasSelectedText ? 'Selected text' : 'No selection'}</span>
-            {hasSelectedText ? <span className="chip-close">×</span> : null}
+            {hasSelectedText ? <span className="text-sm leading-none opacity-70">×</span> : null}
           </button>
 
           <button
             type="button"
-            className="ghost-link"
+            className="border-0 bg-transparent px-2 py-1 text-[10px] font-medium text-white/75 [-webkit-app-region:no-drag] disabled:cursor-not-allowed disabled:opacity-45"
             onClick={() => {
               if (!echo) {
                 setErrorText(preloadUnavailableMessage)
@@ -396,11 +407,11 @@ export function OverlayApp() {
           </button>
         </header>
 
-        <div className="composer-input-row">
-          <div className="composer-input-shell">
+        <div className="mt-1.5 flex items-center gap-2">
+          <div className="relative flex-1 rounded-[10px] border border-white/5 bg-[#16181c]/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] [-webkit-app-region:no-drag]">
             <textarea
               id="prompt-input"
-              className="composer-textarea"
+              className="h-11 max-h-11 min-h-11 w-full resize-none overflow-y-hidden border-0 bg-transparent px-2.5 py-2 text-[16px] leading-[1.35] tracking-[-0.02em] text-white/90 placeholder:text-white/35 focus:outline-none sm:text-[18px]"
               value={commandText}
               placeholder={actionLabel}
               onChange={(event) => setCommandText(event.target.value)}
@@ -413,7 +424,7 @@ export function OverlayApp() {
           </div>
           <button
             type="button"
-            className="input-close-btn"
+            className="h-6 w-6 shrink-0 border-0 bg-transparent p-0 text-[20px] leading-none text-white/60 [-webkit-app-region:no-drag] disabled:cursor-not-allowed disabled:opacity-45"
             onClick={() => {
               if (!echo) {
                 setErrorText(preloadUnavailableMessage)
@@ -429,11 +440,14 @@ export function OverlayApp() {
         </div>
 
         {slashSuggestions.length > 0 ? (
-          <ul className="slash-list slash-list--floating">
+          <ul className="mt-2 grid list-none gap-1.5 p-0 [-webkit-app-region:no-drag]">
             {slashSuggestions.map((item, index) => (
               <li
                 key={item.id}
-                className={index === highlightedSuggestionIndex ? 'active' : ''}
+                className={cn(
+                  'grid cursor-pointer gap-1 rounded-[9px] border border-white/15 bg-[#111316]/80 p-[7px]',
+                  index === highlightedSuggestionIndex && 'border-[#adc4e3]/50 bg-[#2c3848]/70'
+                )}
                 onMouseEnter={() => setHighlightedSuggestionIndex(index)}
                 onMouseDown={(event) => {
                   event.preventDefault()
@@ -441,16 +455,16 @@ export function OverlayApp() {
                   applyHighlightedSuggestion()
                 }}
               >
-                <strong>/{item.command}</strong>
-                <span>{previewPrompt(item.prompt)}</span>
+                <strong className="text-[#f7f9fb]">/{item.command}</strong>
+                <span className="text-[11px] text-slate-200/70">{previewPrompt(item.prompt)}</span>
               </li>
             ))}
           </ul>
         ) : null}
 
-        <footer className="composer-footer">
+        <footer className="mt-1.5 flex items-center justify-end gap-2.5">
           <select
-            className="mode-select"
+            className="rounded-md border-0 bg-transparent px-1 py-0.5 text-[14px] font-bold tracking-[-0.02em] text-white/90 focus:outline-none sm:text-[18px] [-webkit-app-region:no-drag]"
             value={selectedAction}
             onChange={(event) => setSelectedAction(event.target.value as CopilotAction)}
           >
@@ -458,11 +472,11 @@ export function OverlayApp() {
             <option value="askQuestion">Ask Question</option>
           </select>
 
-          <div className="composer-action-row">
+          <div className="inline-flex items-center gap-1.5">
             {isRunning ? (
               <button
                 type="button"
-                className="run-or-stop-btn stop"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border-0 bg-[#cf4553]/90 p-0 text-[11px] font-semibold leading-none text-white [-webkit-app-region:no-drag] disabled:cursor-not-allowed disabled:opacity-45 sm:h-[34px] sm:w-[34px]"
                 onClick={() => {
                   if (!echo) {
                     setErrorText(preloadUnavailableMessage)
@@ -478,7 +492,7 @@ export function OverlayApp() {
             ) : (
               <button
                 type="button"
-                className="run-or-stop-btn run"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border-0 bg-white/30 p-0 text-[13px] font-semibold leading-none text-[#16181a]/90 [-webkit-app-region:no-drag] disabled:cursor-not-allowed disabled:opacity-45 sm:h-[34px] sm:w-[34px] sm:text-sm"
                 onClick={() => void executePrompt()}
                 disabled={!isPreloadAvailable || !commandText.trim()}
                 aria-label={`Run ${modeSelectLabel}`}
@@ -491,40 +505,47 @@ export function OverlayApp() {
         </footer>
 
         {!context.accessibilityTrusted ? (
-          <p className="warning-inline">Accessibility permission required for selected text.</p>
+          <p className="m-0 text-[11px] text-[#f5cd80]">Accessibility permission required for selected text.</p>
         ) : null}
-        {errorText ? <p className="error-label">{errorText}</p> : null}
+        {errorText ? <p className="m-0 text-xs text-[#8d0801]">{errorText}</p> : null}
       </section>
 
       {(outputText || copyFeedback) ? (
         <section
-          className={`overlay-output-block overlay-output-block--compact ${isRunning ? 'is-streaming' : ''}`}
+          className="mt-0.5 grid gap-2 rounded-2xl border border-white/20 bg-[#0f1114]/75 p-3 [-webkit-app-region:no-drag]"
         >
-          <header>
-            <h2>Output</h2>
+          <header className="flex items-center justify-between gap-3">
+            <h2 className="m-0 text-sm text-white/90">Output</h2>
           </header>
 
-          {copyFeedback ? <p className="feedback-label">{copyFeedback}</p> : null}
-          <pre>{outputText || 'No output yet.'}</pre>
+          {copyFeedback ? <p className="m-0 text-xs text-[#0b6e4f]">{copyFeedback}</p> : null}
+          <pre
+            className={cn(
+              'm-0 max-h-[220px] overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-white/20 bg-[#1a1c20]/90 p-3.5 text-[#f5f7fa]/90 [scrollbar-gutter:stable]',
+              isRunning && 'overflow-hidden [&::-webkit-scrollbar]:hidden'
+            )}
+          >
+            {outputText || 'No output yet.'}
+          </pre>
 
-          <div className="output-actions-row">
-            <div className="output-actions-left">
+          <div className="mt-0.5 flex flex-wrap items-center justify-between gap-2.5">
+            <div className="inline-flex items-center gap-1.5">
               <button
                 type="button"
-                className="output-action-btn"
+                className="rounded-[7px] border border-white/20 bg-[#1c1f24]/85 px-2 py-1 text-[11px] leading-[1.2] text-[#f4f7fb]/95 disabled:cursor-not-allowed disabled:opacity-40"
                 onClick={() => void onCopyOutput()}
                 disabled={!outputText.trim()}
                 title="Copy output (Command + C)"
               >
                 Copy
               </button>
-              <span className="output-copy-hint">⌘C to copy output</span>
+              <span className="whitespace-nowrap text-[10px] text-slate-200/65">⌘C to copy output</span>
             </div>
 
-            <div className="output-actions-right">
+            <div className="inline-flex items-center gap-1.5">
               <button
                 type="button"
-                className="output-action-btn"
+                className="rounded-[7px] border border-white/20 bg-[#1c1f24]/85 px-2 py-1 text-[11px] leading-[1.2] text-[#f4f7fb]/95 disabled:cursor-not-allowed disabled:opacity-40"
                 onClick={() => void onApplyOutput('replace')}
                 disabled={!context.hasEditableSelection || !outputText.trim()}
               >
@@ -532,7 +553,7 @@ export function OverlayApp() {
               </button>
               <button
                 type="button"
-                className="output-action-btn"
+                className="rounded-[7px] border border-white/20 bg-[#1c1f24]/85 px-2 py-1 text-[11px] leading-[1.2] text-[#f4f7fb]/95 disabled:cursor-not-allowed disabled:opacity-40"
                 onClick={() => void onApplyOutput('insert')}
                 disabled={!context.hasEditableSelection || !outputText.trim()}
               >
