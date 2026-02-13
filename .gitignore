@@ -3,4 +3,5 @@
 .husky/_
 node_modules/
 out/
+release/
 npm-debug.log*

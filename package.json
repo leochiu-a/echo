@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "env -u ELECTRON_RUN_AS_NODE electron-vite dev",
     "build": "electron-vite build",
+    "dist": "pnpm run build && electron-builder",
+    "dist:mac": "pnpm run build && electron-builder --mac dmg zip",
     "preview": "electron-vite preview",
     "lint": "oxlint .",
     "lint:fix": "oxlint . --fix",
@@ -33,6 +35,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
     "electron": "^40.4.0",
+    "electron-builder": "^26.0.12",
     "electron-vite": "^5.0.0",
     "husky": "^9.1.7",
     "jsdom": "^28.0.0",
@@ -54,8 +57,29 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "app-builder-bin",
       "electron",
+      "electron-builder",
+      "electron-winstaller",
       "esbuild"
     ]
+  },
+  "build": {
+    "appId": "com.echo.desktop",
+    "productName": "Echo",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity"
+    }
   }
 }

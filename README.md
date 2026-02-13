@@ -34,6 +34,20 @@ pnpm run dev
 pnpm run build
 ```
 
+## Package
+
+```bash
+# current OS default target
+pnpm run dist
+
+# platform-specific targets
+pnpm run dist:mac
+pnpm run dist:win
+pnpm run dist:linux
+```
+
+Packaged artifacts are generated under `release/`.
+
 ## Test
 
 ```bash
