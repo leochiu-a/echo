@@ -1,48 +1,48 @@
-import type { CopilotAction } from '@shared/domain/types'
-export { cn } from '@renderer/shared/cn'
+import type { CopilotAction } from "@shared/domain/types";
+export { cn } from "@renderer/shared/cn";
 
 export interface OverlayContext {
-  selectedText: string | null
-  hasEditableSelection: boolean
-  accessibilityTrusted: boolean
+  selectedText: string | null;
+  hasEditableSelection: boolean;
+  accessibilityTrusted: boolean;
 }
 
 export interface HistorySnapshot {
   entries: {
-    id: string
-    command: string
-    action: CopilotAction
-    usedSelectionContext: boolean
-    status: 'succeeded' | 'failed' | 'cancelled'
-    detail: string
-    responseText: string | null
-    inputTokens: number | null
-    outputTokens: number | null
-    totalTokens: number | null
-    createdAt: string
-  }[]
-  commands: string[]
-  retentionPolicy: 'forever' | 'sevenDays' | 'thirtyDays' | 'ninetyDays'
+    id: string;
+    command: string;
+    action: CopilotAction;
+    usedSelectionContext: boolean;
+    status: "succeeded" | "failed" | "cancelled";
+    detail: string;
+    responseText: string | null;
+    inputTokens: number | null;
+    outputTokens: number | null;
+    totalTokens: number | null;
+    createdAt: string;
+  }[];
+  commands: string[];
+  retentionPolicy: "forever" | "sevenDays" | "thirtyDays" | "ninetyDays";
   tokenSummary: {
-    totalTokens: number
-    totalInputTokens: number
-    totalOutputTokens: number
-    inputTokenRunCount: number
-    outputTokenRunCount: number
-    tokenizedRunCount: number
-  }
+    totalTokens: number;
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    inputTokenRunCount: number;
+    outputTokenRunCount: number;
+    tokenizedRunCount: number;
+  };
 }
 
 export interface SlashSuggestion {
-  id: string
-  command: string
-  prompt: string
+  id: string;
+  command: string;
+  prompt: string;
 }
 
 export function previewPrompt(prompt: string): string {
-  const singleLine = prompt.replace(/\n+/g, ' ').trim()
+  const singleLine = prompt.replace(/\n+/g, " ").trim();
   if (singleLine.length <= 96) {
-    return singleLine
+    return singleLine;
   }
-  return `${singleLine.slice(0, 93)}...`
+  return `${singleLine.slice(0, 93)}...`;
 }

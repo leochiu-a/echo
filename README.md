@@ -40,6 +40,20 @@ npm run build
 npm test
 ```
 
+## Lint
+
+```bash
+npm run lint
+npm run lint:fix
+```
+
+## Format
+
+```bash
+npm run format:check
+npm run format
+```
+
 ## Unified local entry
 
 Use:

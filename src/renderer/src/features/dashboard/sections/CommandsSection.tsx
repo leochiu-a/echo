@@ -1,19 +1,19 @@
-import type { AppSettings } from '@shared/domain/types'
+import type { AppSettings } from "@shared/domain/types";
 import {
   cn,
   dashboardInputClass,
   dashboardPrimaryButtonClass,
-  dashboardSecondaryButtonClass
-} from '../dashboard-shared'
+  dashboardSecondaryButtonClass,
+} from "../dashboard-shared";
 
 interface CommandsSectionProps {
-  commandDrafts: AppSettings['slashCommands']
-  commandFeedback: string | null
-  onAddCommand: () => void
-  onSaveCommands: () => void
-  onRemoveCommand: (id: string) => void
-  onUpdateCommand: (id: string, command: string) => void
-  onUpdatePrompt: (id: string, prompt: string) => void
+  commandDrafts: AppSettings["slashCommands"];
+  commandFeedback: string | null;
+  onAddCommand: () => void;
+  onSaveCommands: () => void;
+  onRemoveCommand: (id: string) => void;
+  onUpdateCommand: (id: string, command: string) => void;
+  onUpdatePrompt: (id: string, prompt: string) => void;
 }
 
 export function CommandsSection({
@@ -23,25 +23,25 @@ export function CommandsSection({
   onSaveCommands,
   onRemoveCommand,
   onUpdateCommand,
-  onUpdatePrompt
+  onUpdatePrompt,
 }: CommandsSectionProps) {
   return (
     <section className="grid gap-5" aria-label="Command dashboard view">
       <article className="grid min-w-0 gap-2.5 rounded-2xl border border-white/50 bg-white/80 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_8px_18px_rgba(0,0,0,0.04)]">
         <h3 className="m-0 text-base font-bold text-[#21333d]">Slash command mapping</h3>
         <p className="m-0 text-[13px] font-medium leading-[1.35] text-[#4f616e]">
-          Type <code>/</code> in the inline input to trigger autocomplete. Use <code>{'{{input}}'}</code> in prompt
-          templates to inject remaining text after the command.
+          Type <code>/</code> in the inline input to trigger autocomplete. Use{" "}
+          <code>{"{{input}}"}</code> in prompt templates to inject remaining text after the command.
         </p>
         <p className="m-0 text-[13px] font-medium leading-[1.35] text-[#4f616e]">
-          Example: <code>/reply Thanks for the update</code> {'->'} prompt template receives{' '}
+          Example: <code>/reply Thanks for the update</code> {"->"} prompt template receives{" "}
           <code>Thanks for the update</code>.
         </p>
       </article>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <strong className="text-xs font-semibold text-[#4f616e]">
-          {commandDrafts.length} {commandDrafts.length === 1 ? 'command' : 'commands'}
+          {commandDrafts.length} {commandDrafts.length === 1 ? "command" : "commands"}
         </strong>
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" className={dashboardPrimaryButtonClass} onClick={onAddCommand}>
@@ -70,7 +70,11 @@ export function CommandsSection({
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <strong>Command #{index + 1}</strong>
-                <button type="button" className={dashboardSecondaryButtonClass} onClick={() => onRemoveCommand(item.id)}>
+                <button
+                  type="button"
+                  className={dashboardSecondaryButtonClass}
+                  onClick={() => onRemoveCommand(item.id)}
+                >
                   Remove
                 </button>
               </div>
@@ -90,7 +94,7 @@ export function CommandsSection({
               <label className="grid gap-1.5 text-[13px] text-[#4f616e]">
                 Prompt template
                 <textarea
-                  className={cn(dashboardInputClass, 'min-h-20 resize-y')}
+                  className={cn(dashboardInputClass, "min-h-20 resize-y")}
                   value={item.prompt}
                   rows={4}
                   onChange={(event) => onUpdatePrompt(item.id, event.target.value)}
@@ -101,5 +105,5 @@ export function CommandsSection({
         </ul>
       )}
     </section>
-  )
+  );
 }

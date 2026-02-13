@@ -1,31 +1,31 @@
-import type React from 'react'
-import type { CopilotAction } from '@shared/domain/types'
-import { cn, previewPrompt, type OverlayContext, type SlashSuggestion } from '../overlay-shared'
+import type React from "react";
+import type { CopilotAction } from "@shared/domain/types";
+import { cn, previewPrompt, type OverlayContext, type SlashSuggestion } from "../overlay-shared";
 
 interface OverlayPromptSectionProps {
-  context: OverlayContext
-  commandText: string
-  actionLabel: string
-  modeSelectLabel: string
-  selectedAction: CopilotAction
-  slashSuggestions: SlashSuggestion[]
-  highlightedSuggestionIndex: number
-  isPreloadAvailable: boolean
-  isRunning: boolean
-  errorText: string | null
-  promptInputRef: React.RefObject<HTMLTextAreaElement | null>
-  onClearSelection: () => void
-  onOpenDashboard: () => void
-  onCommandChange: (value: string) => void
-  onKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void | Promise<void>
-  onCompositionStart: () => void
-  onCompositionEnd: () => void
-  onCloseOverlay: () => void
-  onSuggestionHover: (index: number) => void
-  onSuggestionApply: (index: number) => void
-  onActionChange: (action: CopilotAction) => void
-  onCancelRun: () => void
-  onExecutePrompt: () => void
+  context: OverlayContext;
+  commandText: string;
+  actionLabel: string;
+  modeSelectLabel: string;
+  selectedAction: CopilotAction;
+  slashSuggestions: SlashSuggestion[];
+  highlightedSuggestionIndex: number;
+  isPreloadAvailable: boolean;
+  isRunning: boolean;
+  errorText: string | null;
+  promptInputRef: React.RefObject<HTMLTextAreaElement | null>;
+  onClearSelection: () => void;
+  onOpenDashboard: () => void;
+  onCommandChange: (value: string) => void;
+  onKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void | Promise<void>;
+  onCompositionStart: () => void;
+  onCompositionEnd: () => void;
+  onCloseOverlay: () => void;
+  onSuggestionHover: (index: number) => void;
+  onSuggestionApply: (index: number) => void;
+  onActionChange: (action: CopilotAction) => void;
+  onCancelRun: () => void;
+  onExecutePrompt: () => void;
 }
 
 export function OverlayPromptSection({
@@ -51,17 +51,17 @@ export function OverlayPromptSection({
   onSuggestionApply,
   onActionChange,
   onCancelRun,
-  onExecutePrompt
+  onExecutePrompt,
 }: OverlayPromptSectionProps) {
-  const hasSelectedText = Boolean(context.selectedText)
+  const hasSelectedText = Boolean(context.selectedText);
 
   const selectedChipClass = cn(
-    'inline-flex h-6 cursor-pointer items-center gap-2 rounded-full border px-1.5 text-[10px] font-semibold text-white/85 [-webkit-app-region:no-drag]',
-    hasSelectedText ? 'border-[#aebfd6]/35 bg-[#1c1e23]/90' : 'border-white/10 bg-[#17191d]/80'
-  )
+    "inline-flex h-6 cursor-pointer items-center gap-2 rounded-full border px-1.5 text-[10px] font-semibold text-white/85 [-webkit-app-region:no-drag]",
+    hasSelectedText ? "border-[#aebfd6]/35 bg-[#1c1e23]/90" : "border-white/10 bg-[#17191d]/80",
+  );
 
   const actionControlClass =
-    'inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-0 bg-white/30 p-0 text-[12px] font-semibold leading-none text-[#16181a]/90 [-webkit-app-region:no-drag] disabled:cursor-not-allowed disabled:opacity-45'
+    "inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-0 bg-white/30 p-0 text-[12px] font-semibold leading-none text-[#16181a]/90 [-webkit-app-region:no-drag] disabled:cursor-not-allowed disabled:opacity-45";
 
   return (
     <section className="grid gap-1.5 rounded-2xl border border-white/20 bg-[radial-gradient(120%_160%_at_100%_0%,rgba(75,91,112,0.22)_0%,rgba(0,0,0,0)_56%),linear-gradient(180deg,rgba(22,25,28,0.95)_0%,rgba(18,21,24,0.95)_100%)] p-1.5 text-slate-100 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06),0_20px_60px_rgba(0,0,0,0.35)] [-webkit-app-region:drag]">
@@ -71,12 +71,12 @@ export function OverlayPromptSection({
           className={selectedChipClass}
           onClick={() => {
             if (hasSelectedText) {
-              onClearSelection()
+              onClearSelection();
             }
           }}
         >
           <span className="text-sm opacity-80">❝</span>
-          <span>{hasSelectedText ? 'Selected text' : 'No selection'}</span>
+          <span>{hasSelectedText ? "Selected text" : "No selection"}</span>
           {hasSelectedText ? <span className="text-sm leading-none opacity-70">×</span> : null}
         </button>
 
@@ -123,14 +123,14 @@ export function OverlayPromptSection({
             <li
               key={item.id}
               className={cn(
-                'grid cursor-pointer gap-0.5 rounded-[9px] border border-white/15 bg-[#111316]/80 p-1.5',
-                index === highlightedSuggestionIndex && 'border-[#adc4e3]/50 bg-[#2c3848]/70'
+                "grid cursor-pointer gap-0.5 rounded-[9px] border border-white/15 bg-[#111316]/80 p-1.5",
+                index === highlightedSuggestionIndex && "border-[#adc4e3]/50 bg-[#2c3848]/70",
               )}
               onMouseEnter={() => onSuggestionHover(index)}
               onMouseDown={(event) => {
-                event.preventDefault()
-                onSuggestionHover(index)
-                onSuggestionApply(index)
+                event.preventDefault();
+                onSuggestionHover(index);
+                onSuggestionApply(index);
               }}
             >
               <strong className="text-[12px] text-[#f7f9fb]">/{item.command}</strong>
@@ -147,14 +147,20 @@ export function OverlayPromptSection({
             value={selectedAction}
             onChange={(event) => onActionChange(event.target.value as CopilotAction)}
           >
-            <option value="edit">{context.selectedText ? 'Edit Selection' : 'Edit Text'}</option>
+            <option value="edit">{context.selectedText ? "Edit Selection" : "Edit Text"}</option>
             <option value="askQuestion">Ask Question</option>
           </select>
           <span
             aria-hidden="true"
             className="pointer-events-none absolute right-0.5 top-1/2 inline-flex h-3 w-3 -translate-y-1/2 items-center justify-center text-white/50"
           >
-            <svg viewBox="0 0 12 12" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.4">
+            <svg
+              viewBox="0 0 12 12"
+              className="h-3 w-3"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+            >
               <path d="M3 4.75L6 7.5L9 4.75" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </span>
@@ -186,9 +192,11 @@ export function OverlayPromptSection({
       </footer>
 
       {!context.accessibilityTrusted ? (
-        <p className="m-0 text-[11px] text-[#f5cd80]">Accessibility permission required for selected text.</p>
+        <p className="m-0 text-[11px] text-[#f5cd80]">
+          Accessibility permission required for selected text.
+        </p>
       ) : null}
       {errorText ? <p className="m-0 text-xs text-[#8d0801]">{errorText}</p> : null}
     </section>
-  )
+  );
 }

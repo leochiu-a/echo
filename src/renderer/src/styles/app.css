@@ -17,11 +17,11 @@
 
   body {
     font-family:
-      'SF Pro Text',
-      'SF Pro Display',
+      "SF Pro Text",
+      "SF Pro Display",
       -apple-system,
       BlinkMacSystemFont,
-      'Segoe UI',
+      "Segoe UI",
       sans-serif;
     color: #1f1d19;
     -webkit-font-smoothing: antialiased;
@@ -29,17 +29,17 @@
   }
 }
 
-body[data-echo-view='dashboard'] {
+body[data-echo-view="dashboard"] {
   background:
     radial-gradient(circle at 12% 14%, rgba(145, 212, 227, 0.28) 0 16%, transparent 17%),
     radial-gradient(circle at 88% 10%, rgba(235, 217, 192, 0.22) 0 13%, transparent 14%),
     linear-gradient(180deg, #d2e9f2 0%, #c5e0ea 16px, #d8e8ee 16px, #d8e8ee 100%);
 }
 
-body[data-echo-view='overlay'] {
+body[data-echo-view="overlay"] {
   background: transparent;
 }
 
-body[data-echo-view='overlay'] #root {
+body[data-echo-view="overlay"] #root {
   background: transparent;
 }
