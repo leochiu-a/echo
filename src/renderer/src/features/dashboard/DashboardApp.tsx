@@ -6,6 +6,19 @@ import type {
   PromptHistoryStatus
 } from '@shared/domain/types'
 import { getEchoApi, preloadUnavailableMessage } from '@renderer/shared/echo-api'
+import type { LucideIcon } from 'lucide-react'
+import {
+  Archive,
+  CalendarClock,
+  Command as CommandIcon,
+  Cpu,
+  History,
+  House,
+  Keyboard,
+  LayoutGrid,
+  ShieldCheck,
+  SlidersHorizontal
+} from 'lucide-react'
 
 const MODELS = ['gpt-5.2', 'gpt-5.3-codex', 'gpt-5.2-codex']
 const EFFORTS = ['low', 'medium', 'high', 'xhigh']
@@ -38,35 +51,35 @@ const TAB_ITEMS: {
   key: TabKey
   label: string
   pageTitle: string
-  marker: string
+  icon: LucideIcon
   description: string
 }[] = [
   {
     key: 'home',
     label: 'Home',
     pageTitle: 'Home',
-    marker: '⌂',
+    icon: House,
     description: 'Live token usage summary from your locally stored prompt history.'
   },
   {
     key: 'history',
     label: 'History',
     pageTitle: 'History records',
-    marker: '⟳',
+    icon: History,
     description: 'Recent prompt runs, with status and timestamps.'
   },
   {
     key: 'commands',
     label: 'Commands',
     pageTitle: 'Command dashboardview',
-    marker: '/',
+    icon: CommandIcon,
     description: 'Configure slash commands and prompt templates for inline input autocomplete.'
   },
   {
     key: 'settings',
     label: 'Settings',
     pageTitle: 'Settings',
-    marker: '⚙',
+    icon: SlidersHorizontal,
     description:
       'Configure Codex App Server streaming model, reasoning effort, and shortcuts for input, replace, and insert actions.'
   }
@@ -257,24 +270,27 @@ export function DashboardApp() {
           </header>
 
           <nav className="grid content-start items-start grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-1" aria-label="Dashboard sections">
-            {TAB_ITEMS.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                className={cn(
-                  'inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[10px] border px-2 text-sm font-semibold text-[#3e5968] transition-colors lg:justify-start lg:px-3',
-                  tab === item.key
-                    ? 'border-black/10 bg-black/10 text-black/90'
-                    : 'border-transparent bg-transparent hover:border-black/5 hover:bg-black/[0.045]'
-                )}
-                onClick={() => setTab(item.key)}
-              >
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-[#81abba]/60 bg-[#e7f4f8]/80 text-[10px] font-semibold text-[#2a5f6d]" aria-hidden="true">
-                  {item.marker}
-                </span>
-                <span className="hidden lg:inline">{item.label}</span>
-              </button>
-            ))}
+            {TAB_ITEMS.map((item) => {
+              const TabIcon = item.icon
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={cn(
+                    'inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[10px] border px-2 text-sm font-semibold text-[#3e5968] transition-colors lg:justify-start lg:px-3',
+                    tab === item.key
+                      ? 'border-black/10 bg-black/10 text-black/90'
+                      : 'border-transparent bg-transparent hover:border-black/5 hover:bg-black/[0.045]'
+                  )}
+                  onClick={() => setTab(item.key)}
+                >
+                  <span className="inline-flex h-5 w-5 items-center justify-center text-[#2a5f6d]" aria-hidden="true">
+                    <TabIcon className="h-3.5 w-3.5" strokeWidth={2.2} />
+                  </span>
+                  <span className="hidden lg:inline">{item.label}</span>
+                </button>
+              )
+            })}
           </nav>
         </aside>
 
@@ -289,7 +305,7 @@ export function DashboardApp() {
           <div className="overflow-auto pr-1 [scrollbar-gutter:stable]">
             {tab === 'home' ? (
               <section className="grid gap-5" aria-label="Home overview">
-                <DashboardSubsectionHeader icon="▤" title="Overview" />
+                <DashboardSubsectionHeader icon={LayoutGrid} title="Overview" />
 
                 <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]">
                   <article className="grid min-h-[220px] min-w-0 gap-2.5 rounded-2xl border border-white/50 bg-white/80 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_8px_18px_rgba(0,0,0,0.04)] lg:row-span-2">
@@ -330,7 +346,7 @@ export function DashboardApp() {
                   </article>
                 </div>
 
-                <DashboardSubsectionHeader icon="◷" title="Codex Monthly Usage" />
+                <DashboardSubsectionHeader icon={CalendarClock} title="Codex Monthly Usage" />
                 <article className="grid min-w-0 gap-3 rounded-2xl border border-white/50 bg-white/80 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_8px_18px_rgba(0,0,0,0.04)]">
                   {monthlyUsage.runCount === 0 ? (
                     <p className="m-0 text-[13px] font-medium leading-[1.35] text-[#4f616e]">
@@ -361,12 +377,12 @@ export function DashboardApp() {
 
             {tab === 'history' ? (
               <section className="grid gap-5" aria-label="History records">
-                <DashboardSubsectionHeader icon="⟳" title="Recent Sessions" />
+                <DashboardSubsectionHeader icon={History} title="Recent Sessions" />
                 <article className="grid min-w-0 gap-2.5 rounded-2xl border border-white/50 bg-white/80 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_8px_18px_rgba(0,0,0,0.04)]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-start gap-2.5">
-                      <span className="mt-0.5 inline-flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border border-black/10 bg-white/55 text-[10px] text-[#4f616e]" aria-hidden="true">
-                        ◫
+                      <span className="mt-0.5 inline-flex h-[18px] w-[18px] items-center justify-center text-[#4f616e]" aria-hidden="true">
+                        <Archive className="h-3 w-3" strokeWidth={2.2} />
                       </span>
                       <div>
                         <h3 className="m-0 text-base font-bold text-[#21333d]">History Retention</h3>
@@ -393,8 +409,8 @@ export function DashboardApp() {
                   <div className="border-t border-[#bccfd6]/60" />
 
                   <div className="flex items-start gap-2.5">
-                    <span className="mt-0.5 inline-flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border border-black/10 bg-white/55 text-[10px] text-[#4f616e]" aria-hidden="true">
-                      ⌁
+                    <span className="mt-0.5 inline-flex h-[18px] w-[18px] items-center justify-center text-[#4f616e]" aria-hidden="true">
+                      <ShieldCheck className="h-3 w-3" strokeWidth={2.2} />
                     </span>
                     <div>
                       <h3 className="m-0 text-base font-bold text-[#21333d]">Data and Privacy</h3>
@@ -586,7 +602,7 @@ export function DashboardApp() {
 
             {tab === 'settings' ? (
               <section className="grid gap-5" aria-label="Settings">
-                <DashboardSubsectionHeader icon="⌨" title="Keyboard Shortcuts" />
+                <DashboardSubsectionHeader icon={Keyboard} title="Keyboard Shortcuts" />
                 <div className="grid gap-4">
                   <label className="grid gap-2 lg:grid-cols-[minmax(200px,1fr)_minmax(220px,320px)_auto] lg:items-start lg:gap-2.5">
                     <div>
@@ -667,7 +683,7 @@ export function DashboardApp() {
                   </label>
                 </div>
 
-                <DashboardSubsectionHeader icon="◉" title="Model" />
+                <DashboardSubsectionHeader icon={Cpu} title="Model" />
                 <div className="grid gap-4">
                   <label className="grid gap-2 text-base font-bold text-[#21333d]">
                     Model
@@ -743,12 +759,14 @@ export function DashboardApp() {
   )
 }
 
-function DashboardSubsectionHeader(props: { icon: string; title: string }) {
+function DashboardSubsectionHeader(props: { icon: LucideIcon; title: string }) {
+  const Icon = props.icon
+
   return (
     <header className="grid gap-2.5">
       <div className="inline-flex items-center gap-2.5">
-        <span className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-black/10 bg-white/60 text-xs text-[#4f616e]" aria-hidden="true">
-          {props.icon}
+        <span className="inline-flex h-5 w-5 items-center justify-center text-[#4f616e]" aria-hidden="true">
+          <Icon className="h-3.5 w-3.5" strokeWidth={2.2} />
         </span>
         <h3 className="m-0 text-lg font-bold text-[#4f616e] md:text-[18px]">{props.title}</h3>
       </div>
