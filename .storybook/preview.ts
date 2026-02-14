@@ -1,7 +1,29 @@
 import type { Preview } from "@storybook/react-vite";
+import "../src/renderer/src/styles/app.css";
 
 const preview: Preview = {
+  decorators: [
+    (Story, context) => {
+      const view = context.parameters.echoView as "dashboard" | "overlay" | undefined;
+      if (typeof document !== "undefined") {
+        if (view) {
+          document.body.setAttribute("data-echo-view", view);
+        } else {
+          document.body.removeAttribute("data-echo-view");
+        }
+      }
+
+      return Story();
+    },
+  ],
   parameters: {
+    backgrounds: {
+      default: "dashboard",
+      values: [
+        { name: "dashboard", value: "#d8e8ee" },
+        { name: "overlay", value: "#121416" },
+      ],
+    },
     controls: {
       matchers: {
         color: /(background|color)$/i,

@@ -48,6 +48,18 @@ pnpm run dist:linux
 
 Packaged artifacts are generated under `release/`.
 
+## Storybook
+
+```bash
+pnpm run storybook
+```
+
+Build static Storybook site:
+
+```bash
+pnpm run build-storybook
+```
+
 ## Test
 
 ```bash
