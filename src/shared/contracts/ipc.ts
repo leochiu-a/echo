@@ -121,6 +121,7 @@ export const ipcChannels = {
   overlayClose: "overlay:close",
   overlayApplyOutput: "overlay:apply-output",
   dashboardOpen: "dashboard:open",
+  systemOpenAccessibilitySettings: "system:open-accessibility-settings",
   runtimeStart: "runtime:start",
   runtimeCancel: "runtime:cancel",
   runtimeEvent: "runtime:event",
@@ -177,6 +178,9 @@ export interface EchoRendererApi {
     cancel: () => Promise<void>;
     isRunning: () => Promise<boolean>;
     onEvent: (listener: (event: RuntimeStreamEvent) => void) => () => void;
+  };
+  system: {
+    openAccessibilitySettings: () => Promise<boolean>;
   };
 }
 

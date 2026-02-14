@@ -76,6 +76,10 @@ export function registerIpcHandlers(coordinator: AppCoordinator): void {
     await coordinator.openDashboard();
   });
 
+  ipcMain.handle(ipcChannels.systemOpenAccessibilitySettings, async () => {
+    return await coordinator.openAccessibilitySettings();
+  });
+
   ipcMain.handle(ipcChannels.runtimeStart, async (event, payload: unknown) => {
     const request = runPromptRequestSchema.parse(payload);
     const window = BrowserWindow.fromWebContents(event.sender);

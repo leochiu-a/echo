@@ -116,6 +116,11 @@ const echoApi: EchoRendererApi = {
       };
     },
   },
+  system: {
+    async openAccessibilitySettings() {
+      return Boolean(await ipcRenderer.invoke(ipcChannels.systemOpenAccessibilitySettings));
+    },
+  },
 };
 
 contextBridge.exposeInMainWorld("echo", echoApi);

@@ -10,6 +10,8 @@ import {
   type TabKey,
   cn,
 } from "./dashboard-shared";
+import { DashboardOnboardingFlow } from "./components/DashboardOnboardingFlow";
+import { useDashboardOnboarding } from "./hooks/useDashboardOnboarding";
 import { CommandsSection } from "./sections/CommandsSection";
 import { HistorySection } from "./sections/HistorySection";
 import { HomeSection } from "./sections/HomeSection";
@@ -17,6 +19,8 @@ import { SettingsSection } from "./sections/SettingsSection";
 
 export function DashboardApp() {
   const echo = getEchoApi();
+  const { isOnboardingActive, currentStep, goToNextStep, goToPreviousStep, completeOnboarding } =
+    useDashboardOnboarding();
 
   const [tab, setTab] = useState<TabKey>("home");
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -175,6 +179,14 @@ export function DashboardApp() {
     setSettingsDraft((current) => ({ ...current, ...patch }));
   };
 
+  const onOpenAccessibilitySettings = () => {
+    if (!echo) {
+      return;
+    }
+
+    void echo.system.openAccessibilitySettings();
+  };
+
   const onSaveSettings = () => {
     if (!echo) {
       return;
@@ -211,6 +223,19 @@ export function DashboardApp() {
       <main className="grid h-full w-full place-items-center p-3 text-center text-lg font-semibold text-[#1f3642]">
         Loading dashboard...
       </main>
+    );
+  }
+
+  if (isOnboardingActive) {
+    return (
+      <DashboardOnboardingFlow
+        currentStep={currentStep}
+        openPanelShortcut={settings.openPanelShortcut}
+        onOpenAccessibilitySettings={onOpenAccessibilitySettings}
+        onNextStep={goToNextStep}
+        onPreviousStep={goToPreviousStep}
+        onComplete={completeOnboarding}
+      />
     );
   }
 

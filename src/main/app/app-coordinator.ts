@@ -1,4 +1,4 @@
-import { BrowserWindow } from "electron";
+import { BrowserWindow, shell } from "electron";
 import { resolveSlashCommandPrompt } from "@shared/domain/slash";
 import { summarizeCLIErrorMessage } from "@shared/domain/error-summary";
 import { ipcChannels, type RuntimeStreamEvent } from "@shared/contracts/ipc";
@@ -69,6 +69,22 @@ export class AppCoordinator {
 
   async openDashboard(): Promise<void> {
     await this.dashboardWindowService.open();
+  }
+
+  async openAccessibilitySettings(): Promise<boolean> {
+    if (process.platform !== "darwin") {
+      return false;
+    }
+
+    try {
+      await shell.openExternal(
+        "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+      );
+      return true;
+    } catch (error) {
+      console.warn("[echo] failed to open macOS accessibility settings", error);
+      return false;
+    }
   }
 
   async captureOverlayContext() {
