@@ -1,13 +1,6 @@
 import { defineConfig } from "vitest/config";
 import { resolve } from "node:path";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 
-const dirname =
-  typeof __dirname !== "undefined" ? __dirname : path.dirname(fileURLToPath(import.meta.url));
-
-// More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 export default defineConfig({
   resolve: {
     alias: {
@@ -17,18 +10,29 @@ export default defineConfig({
     },
   },
   test: {
-    environment: "node",
-    include: ["Tests/unit/**/*.test.ts", "src/renderer/src/**/*.test.ts"],
     projects: [
       {
         extends: true,
-        plugins: [
-          // The plugin will run tests for the stories defined in your Storybook config
-          // See options at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon#storybooktest
-          storybookTest({
-            configDir: path.join(dirname, ".storybook"),
-          }),
-        ],
+        test: {
+          name: "node",
+          environment: "node",
+          include: ["Tests/unit/**/*.test.ts", "src/renderer/src/**/*.test.ts"],
+          exclude: [
+            "src/renderer/src/**/*.stories.test.ts",
+            "src/renderer/src/features/overlay/hooks/**/*.test.ts",
+          ],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "jsdom",
+          environment: "jsdom",
+          include: [
+            "src/renderer/src/**/*.stories.test.ts",
+            "src/renderer/src/features/overlay/hooks/**/*.test.ts",
+          ],
+        },
       },
     ],
   },
