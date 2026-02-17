@@ -71,6 +71,7 @@ describe("useOverlayBootstrap", () => {
       schemaVersion: 1,
       codexModel: "gpt-5.3-codex",
       codexReasoningEffort: "medium",
+      openaiApiKey: "",
       openPanelShortcut: "Command+K",
       replaceShortcut: "Command+Enter",
       insertShortcut: "Command+Shift+Enter",

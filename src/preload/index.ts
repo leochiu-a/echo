@@ -10,6 +10,8 @@ import {
   promptHistoryTokenSummarySchema,
   runPromptRequestSchema,
   runtimeStreamEventSchema,
+  voiceTranscriptionRequestSchema,
+  voiceTranscriptionResultSchema,
   type EchoRendererApi,
 } from "@shared/contracts/ipc";
 
@@ -94,6 +96,15 @@ const echoApi: EchoRendererApi = {
         ipcRenderer.off(ipcChannels.overlayContextReady, wrapped);
       };
     },
+    onVoiceInputRequested(listener) {
+      const wrapped = () => {
+        listener();
+      };
+      ipcRenderer.on(ipcChannels.overlayVoiceInputRequested, wrapped);
+      return () => {
+        ipcRenderer.off(ipcChannels.overlayVoiceInputRequested, wrapped);
+      };
+    },
   },
   runtime: {
     async start(payload) {
@@ -114,6 +125,13 @@ const echoApi: EchoRendererApi = {
       return () => {
         ipcRenderer.off(ipcChannels.runtimeEvent, wrapped);
       };
+    },
+  },
+  voice: {
+    async transcribe(payload) {
+      const parsed = voiceTranscriptionRequestSchema.parse(payload);
+      const result = await ipcRenderer.invoke(ipcChannels.voiceTranscribe, parsed);
+      return voiceTranscriptionResultSchema.parse(result);
     },
   },
   system: {

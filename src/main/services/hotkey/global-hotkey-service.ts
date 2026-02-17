@@ -30,10 +30,7 @@ export class GlobalHotkeyService {
     if (this.registeredShortcut) {
       globalShortcut.unregister(this.registeredShortcut);
       this.registeredShortcut = null;
-      return;
     }
-
-    globalShortcut.unregisterAll();
   }
 
   dispose(): void {

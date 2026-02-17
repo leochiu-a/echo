@@ -76,6 +76,17 @@ export class OverlayWindowService {
       return;
     }
 
+    this.showWindowNearCursor(window, context);
+    window.webContents.send(ipcChannels.overlayContextReady, context);
+  }
+
+  async showNearCursor(context: OverlayContextSnapshot): Promise<void> {
+    const window = await this.createWindow();
+    this.showWindowNearCursor(window, context);
+    window.webContents.send(ipcChannels.overlayContextReady, context);
+  }
+
+  private showWindowNearCursor(window: BrowserWindow, context: OverlayContextSnapshot): void {
     const boundsNearSelection = this.computeBoundsNearSelection(context);
     const preferredBounds = this.windowStateService.overlayBounds;
     const nextBounds =
@@ -91,7 +102,6 @@ export class OverlayWindowService {
 
     window.show();
     window.focus();
-    window.webContents.send(ipcChannels.overlayContextReady, context);
   }
 
   resizeToContent(height: number): void {

@@ -33,6 +33,7 @@ export function DashboardApp() {
   const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>({
     codexModel: "gpt-5.3-codex",
     codexReasoningEffort: "medium",
+    openaiApiKey: "",
     openPanelShortcut: "Command+K",
     replaceShortcut: "Command+Enter",
     insertShortcut: "Command+Shift+Enter",
@@ -50,6 +51,7 @@ export function DashboardApp() {
       setSettingsDraft({
         codexModel: nextSettings.codexModel,
         codexReasoningEffort: nextSettings.codexReasoningEffort,
+        openaiApiKey: nextSettings.openaiApiKey,
         openPanelShortcut: nextSettings.openPanelShortcut,
         replaceShortcut: nextSettings.replaceShortcut,
         insertShortcut: nextSettings.insertShortcut,
@@ -187,6 +189,28 @@ export function DashboardApp() {
     void echo.system.openAccessibilitySettings();
   };
 
+  const onRequestMicrophonePermission = async (): Promise<"granted" | "denied" | "unsupported"> => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      return "unsupported";
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      for (const track of stream.getTracks()) {
+        track.stop();
+      }
+      return "granted";
+    } catch (error) {
+      if (
+        error instanceof DOMException &&
+        (error.name === "NotAllowedError" || error.name === "PermissionDeniedError")
+      ) {
+        return "denied";
+      }
+      return "unsupported";
+    }
+  };
+
   const onSaveSettings = () => {
     if (!echo) {
       return;
@@ -232,6 +256,7 @@ export function DashboardApp() {
         currentStep={currentStep}
         openPanelShortcut={settings.openPanelShortcut}
         onOpenAccessibilitySettings={onOpenAccessibilitySettings}
+        onRequestMicrophonePermission={onRequestMicrophonePermission}
         onNextStep={goToNextStep}
         onPreviousStep={goToPreviousStep}
         onComplete={completeOnboarding}

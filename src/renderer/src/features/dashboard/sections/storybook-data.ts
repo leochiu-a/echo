@@ -80,6 +80,7 @@ export const sampleMonthlyUsage: CodexMonthlyUsageSnapshot = {
 export const sampleSettingsDraft: SettingsDraft = {
   codexModel: "gpt-5.3-codex",
   codexReasoningEffort: "medium",
+  openaiApiKey: "sk-echo-storybook",
   openPanelShortcut: "Command+K",
   replaceShortcut: "Command+Shift+R",
   insertShortcut: "Command+Shift+I",

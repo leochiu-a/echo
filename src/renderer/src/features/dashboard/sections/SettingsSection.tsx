@@ -1,4 +1,4 @@
-import { Cpu, Keyboard } from "lucide-react";
+import { Cpu, KeyRound, Keyboard } from "lucide-react";
 import { DashboardSubsectionHeader } from "../components/DashboardSubsectionHeader";
 import type { SettingsDraft } from "../dashboard-shared";
 import {
@@ -152,6 +152,25 @@ export function SettingsSection({
             ))}
           </select>
         </label>
+      </div>
+
+      <DashboardSubsectionHeader icon={KeyRound} title="API Key" />
+      <div className="grid gap-3">
+        <label className="grid gap-2 text-base font-bold text-[#21333d]">
+          OpenAI API Key
+          <input
+            type="password"
+            className={cn(dashboardInputClass, "h-14 w-full md:max-w-[540px] px-3.5")}
+            value={settingsDraft.openaiApiKey}
+            onChange={(event) => onPatchDraft({ openaiApiKey: event.target.value })}
+            placeholder="sk-..."
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </label>
+        <p className="m-0 text-[12px] font-medium text-[#4f616e]">
+          Used for Whisper speech-to-text. Stored locally in app settings.
+        </p>
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-2">

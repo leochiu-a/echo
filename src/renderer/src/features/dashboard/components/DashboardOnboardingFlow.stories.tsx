@@ -13,6 +13,7 @@ const meta = {
     currentStep: 0,
     openPanelShortcut: "Command+K",
     onOpenAccessibilitySettings: fn(),
+    onRequestMicrophonePermission: fn(async () => "granted"),
     onNextStep: fn(),
     onPreviousStep: fn(),
     onComplete: fn(),
@@ -27,5 +28,11 @@ export const StepOne: Story = {};
 export const StepTwo: Story = {
   args: {
     currentStep: 1,
+  },
+};
+
+export const StepThree: Story = {
+  args: {
+    currentStep: 2,
   },
 };

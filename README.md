@@ -11,6 +11,7 @@ Echo is now refactored into an Electron architecture with explicit `main / prelo
 - Streaming output, cancel flow, timeout/reset handling
 - Slash command normalization and prompt interpolation (`{{input}}`)
 - History retention policy and token summary
+- Whisper voice input (set OpenAI API key in Settings, or via `OPENAI_API_KEY`)
 - Secure preload bridge (`contextIsolation: true`, `nodeIntegration: false`)
 
 ## Project structure
@@ -27,6 +28,18 @@ Echo is now refactored into an Electron architecture with explicit `main / prelo
 pnpm install
 pnpm run dev
 ```
+
+Open Dashboard -> Settings -> API Key to set your OpenAI API key.
+You can also use env fallback:
+
+```bash
+export OPENAI_API_KEY="sk-..."
+```
+
+Voice shortcuts:
+
+- `Command + K`: open/close input overlay
+- `Command + Shift + K`: start/stop voice dictation that inserts text into the focused field
 
 ## Build
 

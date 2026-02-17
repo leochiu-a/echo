@@ -56,6 +56,8 @@ const meta = {
     highlightedSuggestionIndex: 0,
     isPreloadAvailable: true,
     isRunning: false,
+    isVoiceRecording: false,
+    isVoiceTranscribing: false,
     errorText: null,
     onClearSelection: fn(),
     onCommandChange: fn(),
@@ -67,6 +69,7 @@ const meta = {
     onSuggestionApply: fn(),
     onActionChange: fn(),
     onCancelRun: fn(),
+    onToggleVoiceInput: fn(),
     onExecutePrompt: fn(),
   },
   render: (args) => {
@@ -125,5 +128,12 @@ export const Running: Story = {
   args: {
     commandText: "Keep streaming until stopped...",
     isRunning: true,
+  },
+};
+
+export const VoiceRecording: Story = {
+  args: {
+    commandText: "Draft a concise update",
+    isVoiceRecording: true,
   },
 };

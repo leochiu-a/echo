@@ -12,6 +12,7 @@ const settingsSchema = z.object({
   schemaVersion: z.number().int().positive(),
   codexModel: z.string().min(1),
   codexReasoningEffort: z.string().min(1),
+  openaiApiKey: z.string().optional(),
   openPanelShortcut: z.string().min(1),
   replaceShortcut: z.string().min(1),
   insertShortcut: z.string().min(1),

@@ -16,6 +16,7 @@ export interface AppSettings {
   schemaVersion: number;
   codexModel: string;
   codexReasoningEffort: string;
+  openaiApiKey: string;
   openPanelShortcut: string;
   replaceShortcut: string;
   insertShortcut: string;

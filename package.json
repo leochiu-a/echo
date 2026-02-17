@@ -25,6 +25,7 @@
     "clsx": "^2.1.1",
     "electron-store": "11.0.2",
     "lucide-react": "^0.563.0",
+    "openai": "^6.22.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "tailwind-merge": "^3.4.0",
@@ -89,7 +90,10 @@
         "dmg",
         "zip"
       ],
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Echo uses your microphone for Whisper voice input and dictation."
+      }
     }
   }
 }

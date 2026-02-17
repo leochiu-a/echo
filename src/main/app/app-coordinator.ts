@@ -13,20 +13,25 @@ import { HistoryService } from "@main/services/history/history-service";
 import { CodexRuntimeService } from "@main/services/runtime/codex-runtime-service";
 import { SettingsService } from "@main/services/settings/settings-service";
 import { UsageService } from "@main/services/usage/usage-service";
+import { OpenAIWhisperService } from "@main/services/voice/openai-whisper-service";
 import { DashboardWindowService } from "@main/services/window/dashboard-window-service";
 import { OverlayWindowService } from "@main/services/window/overlay-window-service";
 import { WindowStateService } from "@main/services/window/window-state-service";
+
+const VOICE_INPUT_SHORTCUT = "Command+Shift+K";
 
 export class AppCoordinator {
   readonly settingsService = new SettingsService();
   readonly historyService = new HistoryService();
   readonly usageService = new UsageService();
   readonly runtimeService = new CodexRuntimeService();
+  readonly whisperService = new OpenAIWhisperService();
 
   private readonly windowStateService = new WindowStateService();
   private readonly overlayWindowService: OverlayWindowService;
   private readonly dashboardWindowService: DashboardWindowService;
-  private readonly hotkeyService = new GlobalHotkeyService();
+  private readonly panelHotkeyService = new GlobalHotkeyService();
+  private readonly voiceHotkeyService = new GlobalHotkeyService();
   private readonly axContextBridge = new MacOSAXContextBridge();
   private readonly applyOutputBridge = new MacOSApplyOutputBridge();
 
@@ -36,15 +41,20 @@ export class AppCoordinator {
   }
 
   async start(): Promise<void> {
-    this.hotkeyService.bind(() => {
+    this.panelHotkeyService.bind(() => {
       void this.toggleOverlayFromHotkey();
     });
+    this.voiceHotkeyService.bind(() => {
+      void this.startVoiceInputFromHotkey();
+    });
 
-    ensureShortcutLifecycle(this.hotkeyService);
-    this.registerHotkey(this.settingsService.snapshot.openPanelShortcut);
+    ensureShortcutLifecycle(this.panelHotkeyService);
+    ensureShortcutLifecycle(this.voiceHotkeyService);
+    this.registerHotkey(this.panelHotkeyService, this.settingsService.snapshot.openPanelShortcut);
+    this.registerHotkey(this.voiceHotkeyService, VOICE_INPUT_SHORTCUT);
 
     this.settingsService.onChanged((settings) => {
-      this.registerHotkey(settings.openPanelShortcut);
+      this.registerHotkey(this.panelHotkeyService, settings.openPanelShortcut);
       this.broadcastToAllWindows(ipcChannels.settingsChanged, settings);
     });
 
@@ -56,7 +66,8 @@ export class AppCoordinator {
   }
 
   async stop(): Promise<void> {
-    this.hotkeyService.dispose();
+    this.panelHotkeyService.dispose();
+    this.voiceHotkeyService.dispose();
     await this.runtimeService.dispose();
     this.overlayWindowService.close();
     this.dashboardWindowService.close();
@@ -65,6 +76,15 @@ export class AppCoordinator {
   async toggleOverlayFromHotkey(): Promise<void> {
     const context = await this.axContextBridge.captureSnapshot();
     await this.overlayWindowService.toggleNearCursor(context);
+  }
+
+  async startVoiceInputFromHotkey(): Promise<void> {
+    const context = await this.axContextBridge.captureSnapshot();
+    await this.overlayWindowService.showNearCursor(context);
+    const webContents = this.overlayWindowService.webContents;
+    if (webContents) {
+      webContents.send(ipcChannels.overlayVoiceInputRequested);
+    }
   }
 
   async openDashboard(): Promise<void> {
@@ -133,6 +153,13 @@ export class AppCoordinator {
 
   async getMonthlyUsageSnapshot() {
     return await this.usageService.getMonthlySummary();
+  }
+
+  async transcribeVoiceInput(request: { audioBase64: string; mimeType: string }) {
+    return await this.whisperService.transcribe(
+      request,
+      this.settingsService.snapshot.openaiApiKey,
+    );
   }
 
   async startRuntimeRun(request: RuntimeRunRequest, targetWindow: BrowserWindow): Promise<void> {
@@ -223,9 +250,9 @@ export class AppCoordinator {
     return this.runtimeService.isRunning();
   }
 
-  private registerHotkey(shortcut: string): void {
+  private registerHotkey(hotkeyService: GlobalHotkeyService, shortcut: string): void {
     try {
-      this.hotkeyService.register(shortcut);
+      hotkeyService.register(shortcut);
     } catch (error) {
       // Keep the app alive if shortcut registration fails due to conflict.
       console.warn("[echo] failed to register shortcut", shortcut, error);

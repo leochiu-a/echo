@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
-const DASHBOARD_ONBOARDING_DISMISSED_KEY = "echo:dashboard-onboarding-dismissed:v1";
-const ONBOARDING_TOTAL_STEPS = 2;
+const DASHBOARD_ONBOARDING_DISMISSED_KEY = "echo:dashboard-onboarding-dismissed:v2";
+const ONBOARDING_TOTAL_STEPS = 3;
 
 function readOnboardingDismissed(): boolean {
   try {

@@ -4,6 +4,7 @@ export const appSettingsSchema = z.object({
   schemaVersion: z.number().int().positive(),
   codexModel: z.string().min(1),
   codexReasoningEffort: z.string().min(1),
+  openaiApiKey: z.string(),
   openPanelShortcut: z.string().min(1),
   replaceShortcut: z.string().min(1),
   insertShortcut: z.string().min(1),
@@ -96,6 +97,15 @@ export const runPromptResultSchema = z.object({
   tokenUsage: tokenUsageSchema.nullable(),
 });
 
+export const voiceTranscriptionRequestSchema = z.object({
+  audioBase64: z.string().min(1),
+  mimeType: z.string().min(1),
+});
+
+export const voiceTranscriptionResultSchema = z.object({
+  text: z.string(),
+});
+
 export const runtimeStreamEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("started") }),
   z.object({ type: z.literal("delta"), delta: z.string() }),
@@ -120,12 +130,14 @@ export const ipcChannels = {
   overlayResize: "overlay:resize",
   overlayClose: "overlay:close",
   overlayApplyOutput: "overlay:apply-output",
+  overlayVoiceInputRequested: "overlay:voice-input-requested",
   dashboardOpen: "dashboard:open",
   systemOpenAccessibilitySettings: "system:open-accessibility-settings",
   runtimeStart: "runtime:start",
   runtimeCancel: "runtime:cancel",
   runtimeEvent: "runtime:event",
   runtimeState: "runtime:state",
+  voiceTranscribe: "voice:transcribe",
   settingsChanged: "event:settings-changed",
   historyChanged: "event:history-changed",
 } as const;
@@ -172,12 +184,18 @@ export interface EchoRendererApi {
     onContextReady: (
       listener: (context: z.infer<typeof overlayContextSchema>) => void,
     ) => () => void;
+    onVoiceInputRequested: (listener: () => void) => () => void;
   };
   runtime: {
     start: (payload: z.infer<typeof runPromptRequestSchema>) => Promise<void>;
     cancel: () => Promise<void>;
     isRunning: () => Promise<boolean>;
     onEvent: (listener: (event: RuntimeStreamEvent) => void) => () => void;
+  };
+  voice: {
+    transcribe: (
+      payload: z.infer<typeof voiceTranscriptionRequestSchema>,
+    ) => Promise<z.infer<typeof voiceTranscriptionResultSchema>>;
   };
   system: {
     openAccessibilitySettings: () => Promise<boolean>;

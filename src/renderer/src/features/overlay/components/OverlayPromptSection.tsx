@@ -1,4 +1,5 @@
 import type React from "react";
+import { Mic, Square } from "lucide-react";
 import type { CopilotAction } from "@shared/domain/types";
 import { cn, previewPrompt, type OverlayContext, type SlashSuggestion } from "../overlay-shared";
 
@@ -12,6 +13,8 @@ interface OverlayPromptSectionProps {
   highlightedSuggestionIndex: number;
   isPreloadAvailable: boolean;
   isRunning: boolean;
+  isVoiceRecording: boolean;
+  isVoiceTranscribing: boolean;
   errorText: string | null;
   promptInputRef: React.RefObject<HTMLTextAreaElement | null>;
   onClearSelection: () => void;
@@ -24,6 +27,7 @@ interface OverlayPromptSectionProps {
   onSuggestionApply: (index: number) => void;
   onActionChange: (action: CopilotAction) => void;
   onCancelRun: () => void;
+  onToggleVoiceInput: () => void;
   onExecutePrompt: () => void;
 }
 
@@ -37,6 +41,8 @@ export function OverlayPromptSection({
   highlightedSuggestionIndex,
   isPreloadAvailable,
   isRunning,
+  isVoiceRecording,
+  isVoiceTranscribing,
   errorText,
   promptInputRef,
   onClearSelection,
@@ -49,6 +55,7 @@ export function OverlayPromptSection({
   onSuggestionApply,
   onActionChange,
   onCancelRun,
+  onToggleVoiceInput,
   onExecutePrompt,
 }: OverlayPromptSectionProps) {
   const hasSelectedText = Boolean(context.selectedText);
@@ -167,15 +174,37 @@ export function OverlayPromptSection({
               ■
             </button>
           ) : (
-            <button
-              type="button"
-              className={actionControlClass}
-              onClick={onExecutePrompt}
-              disabled={!isPreloadAvailable || !commandText.trim()}
-              aria-label={`Run ${modeSelectLabel}`}
-            >
-              ↑
-            </button>
+            <>
+              <button
+                type="button"
+                className={actionControlClass}
+                onClick={onToggleVoiceInput}
+                disabled={!isPreloadAvailable || isVoiceTranscribing}
+                aria-label={isVoiceRecording ? "Stop voice input" : "Start voice input"}
+                title={isVoiceRecording ? "Stop voice input" : "Start voice input"}
+              >
+                {isVoiceRecording ? (
+                  <Square className="h-3 w-3 fill-current" />
+                ) : (
+                  <Mic className="h-3.5 w-3.5" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                className={actionControlClass}
+                onClick={onExecutePrompt}
+                disabled={
+                  !isPreloadAvailable ||
+                  !commandText.trim() ||
+                  isVoiceRecording ||
+                  isVoiceTranscribing
+                }
+                aria-label={`Run ${modeSelectLabel}`}
+              >
+                ↑
+              </button>
+            </>
           )}
         </div>
       </footer>

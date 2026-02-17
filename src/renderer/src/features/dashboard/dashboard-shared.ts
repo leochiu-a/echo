@@ -47,6 +47,7 @@ export type TabKey = "home" | "history" | "commands" | "settings";
 export interface SettingsDraft {
   codexModel: string;
   codexReasoningEffort: string;
+  openaiApiKey: string;
   openPanelShortcut: string;
   replaceShortcut: string;
   insertShortcut: string;
@@ -88,7 +89,7 @@ export const TAB_ITEMS: TabItem[] = [
     pageTitle: "Settings",
     icon: SlidersHorizontal,
     description:
-      "Configure Codex App Server streaming model, reasoning effort, and shortcuts for input, replace, and insert actions.",
+      "Configure model, reasoning effort, OpenAI API key for voice input, and shortcuts for input, replace, and insert actions.",
   },
 ];
 
@@ -180,6 +181,7 @@ export function hasPendingSettingsValue(
   return (
     settings.codexModel !== draft.codexModel ||
     settings.codexReasoningEffort !== draft.codexReasoningEffort ||
+    settings.openaiApiKey !== draft.openaiApiKey ||
     settings.openPanelShortcut !== draft.openPanelShortcut ||
     settings.replaceShortcut !== draft.replaceShortcut ||
     settings.insertShortcut !== draft.insertShortcut

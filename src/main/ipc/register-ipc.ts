@@ -7,6 +7,7 @@ import {
   overlayContextSchema,
   promptHistoryRetentionPolicySchema,
   runPromptRequestSchema,
+  voiceTranscriptionRequestSchema,
 } from "@shared/contracts/ipc";
 
 const updateSettingsSchema = appSettingsSchema.partial();
@@ -96,5 +97,10 @@ export function registerIpcHandlers(coordinator: AppCoordinator): void {
 
   ipcMain.handle(ipcChannels.runtimeState, () => {
     return coordinator.isRuntimeRunning();
+  });
+
+  ipcMain.handle(ipcChannels.voiceTranscribe, async (_event, payload: unknown) => {
+    const request = voiceTranscriptionRequestSchema.parse(payload);
+    return await coordinator.transcribeVoiceInput(request);
   });
 }

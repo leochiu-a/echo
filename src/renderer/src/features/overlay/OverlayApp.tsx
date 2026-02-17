@@ -7,10 +7,16 @@ import { OverlayOutputSection } from "./components/OverlayOutputSection";
 import { OverlayPromptSection } from "./components/OverlayPromptSection";
 import { useOverlayBootstrap } from "./hooks/useOverlayBootstrap";
 import { useOverlayKeyboard } from "./hooks/useOverlayKeyboard";
-import type { HistorySnapshot, OverlayContext, SlashSuggestion } from "./overlay-shared";
+import type { HistorySnapshot, OverlayContext } from "./overlay-shared";
 
 const PROMPT_MIN_HEIGHT = 40;
 const PROMPT_MAX_HEIGHT = 132;
+const RECORDING_MIME_CANDIDATES = [
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/mp4",
+  "audio/ogg;codecs=opus",
+];
 
 export function OverlayApp() {
   const echo = getEchoApi();
@@ -37,6 +43,18 @@ export function OverlayApp() {
   const [isComposingInput, setIsComposingInput] = useState(false);
   const [highlightedSuggestionIndex, setHighlightedSuggestionIndex] = useState(0);
   const [presentationRevision, setPresentationRevision] = useState(0);
+  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+  const [isVoiceTranscribing, setIsVoiceTranscribing] = useState(false);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const commandTextRef = useRef(commandText);
+  const directVoiceInsertRef = useRef(false);
+
+  useEffect(() => {
+    commandTextRef.current = commandText;
+  }, [commandText]);
 
   const slashSuggestions = useMemo(() => {
     const autocomplete = slashAutocompleteContext(commandText);
@@ -70,7 +88,7 @@ export function OverlayApp() {
     }
 
     const trimmed = commandText.trim();
-    if (!trimmed || isRunning) {
+    if (!trimmed || isRunning || isVoiceRecording || isVoiceTranscribing) {
       return;
     }
 
@@ -161,6 +179,175 @@ export function OverlayApp() {
     return applySuggestionAt(highlightedSuggestionIndex);
   }
 
+  const insertTranscriptIntoCommand = useCallback((transcript: string) => {
+    const promptInput = promptInputRef.current;
+    if (!promptInput) {
+      setCommandText((current) => `${current}${transcript}`);
+      return;
+    }
+
+    const currentCommand = commandTextRef.current;
+    const selectionStart = promptInput.selectionStart ?? currentCommand.length;
+    const selectionEnd = promptInput.selectionEnd ?? currentCommand.length;
+    const nextCommand =
+      currentCommand.slice(0, selectionStart) + transcript + currentCommand.slice(selectionEnd);
+    const nextCursor = selectionStart + transcript.length;
+
+    setCommandText(nextCommand);
+    window.requestAnimationFrame(() => {
+      const input = promptInputRef.current;
+      if (!input) {
+        return;
+      }
+      input.focus();
+      input.setSelectionRange(nextCursor, nextCursor);
+    });
+  }, []);
+
+  const transcribeAudio = useCallback(
+    async (audioBlob: Blob, directInsert: boolean) => {
+      if (!echo) {
+        setErrorText(preloadUnavailableMessage);
+        return;
+      }
+
+      if (audioBlob.size === 0) {
+        setErrorText("No audio detected.");
+        return;
+      }
+
+      setIsVoiceTranscribing(true);
+      setErrorText(null);
+
+      try {
+        const audioBase64 = await blobToBase64(audioBlob);
+        const result = await echo.voice.transcribe({
+          audioBase64,
+          mimeType: audioBlob.type || "audio/webm",
+        });
+        const transcript = result.text.trim();
+        if (!transcript) {
+          setErrorText("Whisper returned empty text.");
+          return;
+        }
+
+        if (directInsert) {
+          await echo.overlay.applyOutput({ text: transcript, mode: "replace" });
+          await echo.overlay.close();
+          return;
+        }
+
+        insertTranscriptIntoCommand(transcript);
+      } catch (error) {
+        setErrorText(error instanceof Error ? error.message : "Voice transcription failed.");
+      } finally {
+        setIsVoiceTranscribing(false);
+      }
+    },
+    [echo, insertTranscriptIntoCommand],
+  );
+
+  const releaseVoiceCapture = useCallback(() => {
+    mediaRecorderRef.current = null;
+    const stream = mediaStreamRef.current;
+    if (stream) {
+      for (const track of stream.getTracks()) {
+        track.stop();
+      }
+      mediaStreamRef.current = null;
+    }
+    audioChunksRef.current = [];
+    directVoiceInsertRef.current = false;
+  }, []);
+
+  const cancelVoiceCapture = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.onstop = null;
+      recorder.stop();
+    }
+
+    setIsVoiceRecording(false);
+    releaseVoiceCapture();
+  }, [releaseVoiceCapture]);
+
+  const stopVoiceCapture = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state === "inactive") {
+      setIsVoiceRecording(false);
+      return;
+    }
+
+    setIsVoiceRecording(false);
+    recorder.stop();
+  }, []);
+
+  const startVoiceCapture = useCallback(
+    async (directInsert: boolean) => {
+      if (!echo) {
+        setErrorText(preloadUnavailableMessage);
+        return;
+      }
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setErrorText("Microphone capture is not available in this environment.");
+        return;
+      }
+
+      if (isVoiceRecording || isVoiceTranscribing) {
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = preferredRecordingMimeType();
+        const recorder =
+          mimeType && MediaRecorder.isTypeSupported(mimeType)
+            ? new MediaRecorder(stream, { mimeType })
+            : new MediaRecorder(stream);
+
+        const outputMimeType = recorder.mimeType || mimeType || "audio/webm";
+        audioChunksRef.current = [];
+        mediaStreamRef.current = stream;
+        mediaRecorderRef.current = recorder;
+        directVoiceInsertRef.current = directInsert;
+
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+        recorder.onstop = () => {
+          const chunks = [...audioChunksRef.current];
+          const shouldDirectInsert = directVoiceInsertRef.current;
+          releaseVoiceCapture();
+          if (chunks.length === 0) {
+            setErrorText("No audio detected.");
+            return;
+          }
+          void transcribeAudio(new Blob(chunks, { type: outputMimeType }), shouldDirectInsert);
+        };
+
+        recorder.start(250);
+        setIsVoiceRecording(true);
+      } catch (error) {
+        releaseVoiceCapture();
+        setIsVoiceRecording(false);
+        setErrorText(error instanceof Error ? error.message : "Failed to start voice input.");
+      }
+    },
+    [echo, isVoiceRecording, isVoiceTranscribing, releaseVoiceCapture, transcribeAudio],
+  );
+
+  const toggleVoiceCapture = useCallback(() => {
+    if (isVoiceRecording) {
+      stopVoiceCapture();
+      return;
+    }
+
+    void startVoiceCapture(false);
+  }, [isVoiceRecording, startVoiceCapture, stopVoiceCapture]);
+
   async function onCopyOutput() {
     if (!outputText.trim()) {
       return;
@@ -197,12 +384,16 @@ export function OverlayApp() {
       return;
     }
 
+    if (isVoiceRecording) {
+      cancelVoiceCapture();
+    }
+
     if (isRunning) {
       await echo.runtime.cancel();
     }
 
     await echo.overlay.close();
-  }, [echo, isRunning]);
+  }, [cancelVoiceCapture, echo, isRunning, isVoiceRecording]);
 
   const onKeyDown = useOverlayKeyboard({
     isComposingInput,
@@ -263,7 +454,29 @@ export function OverlayApp() {
     slashSuggestions.length,
     context.accessibilityTrusted,
     presentationRevision,
+    isVoiceRecording,
+    isVoiceTranscribing,
   ]);
+
+  useEffect(() => {
+    if (!echo) {
+      return;
+    }
+
+    return echo.overlay.onVoiceInputRequested(() => {
+      if (isVoiceRecording) {
+        stopVoiceCapture();
+        return;
+      }
+      void startVoiceCapture(true);
+    });
+  }, [echo, isVoiceRecording, startVoiceCapture, stopVoiceCapture]);
+
+  useEffect(() => {
+    return () => {
+      cancelVoiceCapture();
+    };
+  }, [cancelVoiceCapture]);
 
   return (
     <main
@@ -280,6 +493,8 @@ export function OverlayApp() {
         highlightedSuggestionIndex={highlightedSuggestionIndex}
         isPreloadAvailable={isPreloadAvailable}
         isRunning={isRunning}
+        isVoiceRecording={isVoiceRecording}
+        isVoiceTranscribing={isVoiceTranscribing}
         errorText={errorText}
         promptInputRef={promptInputRef}
         onClearSelection={() => {
@@ -314,6 +529,7 @@ export function OverlayApp() {
           }
           void echo.runtime.cancel();
         }}
+        onToggleVoiceInput={toggleVoiceCapture}
         onExecutePrompt={() => void executePrompt()}
       />
 
@@ -368,4 +584,38 @@ function copyTextWithDocumentCommand(text: string): boolean {
   } finally {
     textarea.remove();
   }
+}
+
+function preferredRecordingMimeType(): string | null {
+  if (typeof MediaRecorder === "undefined" || typeof MediaRecorder.isTypeSupported !== "function") {
+    return null;
+  }
+
+  for (const candidate of RECORDING_MIME_CANDIDATES) {
+    if (MediaRecorder.isTypeSupported(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => {
+      reject(new Error("Unable to read recorded audio."));
+    };
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("Unable to parse recorded audio."));
+        return;
+      }
+
+      const separatorIndex = result.indexOf(",");
+      resolve(separatorIndex >= 0 ? result.slice(separatorIndex + 1) : result);
+    };
+    reader.readAsDataURL(blob);
+  });
 }
