@@ -1,4 +1,5 @@
 import { Cpu, KeyRound, Keyboard } from "lucide-react";
+import { KeyboardShortcutInput } from "../components/KeyboardShortcutInput";
 import { DashboardSubsectionHeader } from "../components/DashboardSubsectionHeader";
 import type { SettingsDraft } from "../dashboard-shared";
 import {
@@ -9,7 +10,6 @@ import {
   dashboardPrimaryButtonClass,
   dashboardSecondaryButtonClass,
   dashboardSelectClass,
-  tokenizeShortcut,
 } from "../dashboard-shared";
 
 interface SettingsSectionProps {
@@ -33,7 +33,7 @@ export function SettingsSection({
     <section className="grid gap-5" aria-label="Settings">
       <DashboardSubsectionHeader icon={Keyboard} title="Keyboard Shortcuts" />
       <div className="grid gap-4">
-        <label className="grid gap-2 lg:grid-cols-[minmax(200px,1fr)_minmax(220px,320px)_auto] lg:items-start lg:gap-2.5">
+        <label className="grid gap-2 lg:grid-cols-[minmax(200px,1fr)_minmax(220px,360px)] lg:items-start lg:gap-2.5">
           <div>
             <strong className="mb-1.5 block text-base font-bold text-[#21333d]">
               Open Input Panel
@@ -42,27 +42,15 @@ export function SettingsSection({
               Toggle the floating input panel. Default: Command + K.
             </p>
           </div>
-          <input
+          <KeyboardShortcutInput
             className={cn(dashboardInputClass, "h-14 px-3.5")}
             value={settingsDraft.openPanelShortcut}
-            onChange={(event) => onPatchDraft({ openPanelShortcut: event.target.value })}
+            ariaLabel="Open input panel shortcut"
+            onChange={(value) => onPatchDraft({ openPanelShortcut: value })}
           />
-          <div
-            className="inline-flex flex-wrap items-center justify-start gap-1.5 lg:justify-end"
-            aria-hidden="true"
-          >
-            {tokenizeShortcut(settingsDraft.openPanelShortcut).map((token, index) => (
-              <span
-                key={`${token}-${index}`}
-                className="inline-flex min-h-[34px] min-w-[34px] items-center justify-center rounded-xl border border-black/10 bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase text-[#21333d]"
-              >
-                {token}
-              </span>
-            ))}
-          </div>
         </label>
 
-        <label className="grid gap-2 lg:grid-cols-[minmax(200px,1fr)_minmax(220px,320px)_auto] lg:items-start lg:gap-2.5">
+        <label className="grid gap-2 lg:grid-cols-[minmax(200px,1fr)_minmax(220px,360px)] lg:items-start lg:gap-2.5">
           <div>
             <strong className="mb-1.5 block text-base font-bold text-[#21333d]">
               Replace Action
@@ -71,27 +59,15 @@ export function SettingsSection({
               Apply output by replacing the current selection.
             </p>
           </div>
-          <input
+          <KeyboardShortcutInput
             className={cn(dashboardInputClass, "h-14 px-3.5")}
             value={settingsDraft.replaceShortcut}
-            onChange={(event) => onPatchDraft({ replaceShortcut: event.target.value })}
+            ariaLabel="Replace action shortcut"
+            onChange={(value) => onPatchDraft({ replaceShortcut: value })}
           />
-          <div
-            className="inline-flex flex-wrap items-center justify-start gap-1.5 lg:justify-end"
-            aria-hidden="true"
-          >
-            {tokenizeShortcut(settingsDraft.replaceShortcut).map((token, index) => (
-              <span
-                key={`${token}-${index}`}
-                className="inline-flex min-h-[34px] min-w-[34px] items-center justify-center rounded-xl border border-black/10 bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase text-[#21333d]"
-              >
-                {token}
-              </span>
-            ))}
-          </div>
         </label>
 
-        <label className="grid gap-2 lg:grid-cols-[minmax(200px,1fr)_minmax(220px,320px)_auto] lg:items-start lg:gap-2.5">
+        <label className="grid gap-2 lg:grid-cols-[minmax(200px,1fr)_minmax(220px,360px)] lg:items-start lg:gap-2.5">
           <div>
             <strong className="mb-1.5 block text-base font-bold text-[#21333d]">
               Insert Action
@@ -100,24 +76,12 @@ export function SettingsSection({
               Apply output by inserting next to the current selection.
             </p>
           </div>
-          <input
+          <KeyboardShortcutInput
             className={cn(dashboardInputClass, "h-14 px-3.5")}
             value={settingsDraft.insertShortcut}
-            onChange={(event) => onPatchDraft({ insertShortcut: event.target.value })}
+            ariaLabel="Insert action shortcut"
+            onChange={(value) => onPatchDraft({ insertShortcut: value })}
           />
-          <div
-            className="inline-flex flex-wrap items-center justify-start gap-1.5 lg:justify-end"
-            aria-hidden="true"
-          >
-            {tokenizeShortcut(settingsDraft.insertShortcut).map((token, index) => (
-              <span
-                key={`${token}-${index}`}
-                className="inline-flex min-h-[34px] min-w-[34px] items-center justify-center rounded-xl border border-black/10 bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase text-[#21333d]"
-              >
-                {token}
-              </span>
-            ))}
-          </div>
         </label>
       </div>
 
